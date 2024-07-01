@@ -190,6 +190,18 @@ def query(args):
         print("system desc saved to:", file_name)
 
 
+def upload(args):
+
+    print(args.issue)
+    print(args.binary)
+
+
+def download(args):
+
+    print(args.issue)
+    print(args.binary)
+
+
 def main():
     import argparse
 
@@ -246,6 +258,30 @@ def main():
         help="serialize a system desc for the current system to a file",
     )
     query_parser.set_defaults(func=query)
+
+    upload_parser = subparsers.add_parser("upload", help="upload flatbuffer to TBD")
+    upload_parser.add_argument(
+        "-i",
+        "--issue",
+        nargs="?",
+        default="",
+        help="upload flatbuffer file to issue",
+    )
+    upload_parser.add_argument("binary", help="flatbuffer binary file")
+    upload_parser.set_defaults(func=upload)
+
+    download_parser = subparsers.add_parser(
+        "download", help="download flatbuffer to TBD"
+    )
+    download_parser.add_argument(
+        "-i",
+        "--issue",
+        nargs="?",
+        default="",
+        help="upload flatbuffer file to issue",
+    )
+    download_parser.add_argument("binary", help="flatbuffer binary file")
+    download_parser.set_defaults(func=download)
 
     try:
         args = parser.parse_args()
