@@ -202,12 +202,12 @@ def download(args):
 
     headers = {
         "Accept": "application/vnd.github+json",
-        "Authorization": "Bearer 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",
+        "Authorization": "Bearer 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",
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
     response = requests.get(
-        "https://api.github.com/repos/octocat/hello-world/issues", headers=headers
+        "https://api.github.com/repos/ttdloke/mlir_workflows/issues", headers=headers
     )
     print(response.json())
 
