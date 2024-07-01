@@ -5,6 +5,8 @@
 import ttrt.binary
 import os
 import json
+from urllib.request import urlopen, Request
+import requests
 
 
 def system_desc_as_dict(desc):
@@ -197,6 +199,17 @@ def upload(args):
 
 
 def download(args):
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer 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",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    response = requests.get(
+        "https://api.github.com/repos/octocat/hello-world/issues", headers=headers
+    )
+    print(response.json())
 
     print(args.issue)
     print(args.binary)
