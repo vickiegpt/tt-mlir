@@ -5,7 +5,6 @@
 import ttrt.binary
 import os
 import json
-from urllib.request import urlopen, Request
 from ttrt.issues import create, upload, download
 
 
