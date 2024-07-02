@@ -194,8 +194,23 @@ def query(args):
 
 def upload(args):
 
-    print(args.issue)
-    print(args.binary)
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer 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",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+
+    data = json.dumps({"body": args.binary})
+
+    response = requests.patch(
+        f"https://api.github.com/repos/ttdloke/mlir_workflows/issues/{args.issue}",
+        headers=headers,
+        data=data,
+    )
+
+    res = response.json()
+    print("Here is a link to the issue just updated: " + res["html_url"])
 
 
 def download(args):
@@ -207,12 +222,36 @@ def download(args):
     }
 
     response = requests.get(
-        "https://api.github.com/repos/ttdloke/mlir_workflows/issues", headers=headers
+        f"https://api.github.com/repos/ttdloke/mlir_workflows/issues/{args.issue}",
+        headers=headers,
     )
-    print(response.json())
 
-    print(args.issue)
-    print(args.binary)
+    res = response.json()
+    f = open(args.binary, "w")
+    f.write(str(res))
+    f.close()
+    print("The file was just downloaded to: " + args.binary)
+
+
+def create(args):
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer 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",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+
+    data = json.dumps({"title": args.issue, "body": args.binary})
+
+    response = requests.post(
+        f"https://api.github.com/repos/ttdloke/mlir_workflows/issues",
+        headers=headers,
+        data=data,
+    )
+
+    res = response.json()
+    print("Here is a link to the issue just created: " + res["html_url"])
 
 
 def main():
@@ -295,6 +334,18 @@ def main():
     )
     download_parser.add_argument("binary", help="flatbuffer binary file")
     download_parser.set_defaults(func=download)
+
+    create_parser = subparsers.add_parser(
+        "create", help="create flatbuffer related issue with file"
+    )
+    create_parser.add_argument(
+        "-i",
+        "--issue",
+        nargs="?",
+        help="name of issue",
+    )
+    create_parser.add_argument("binary", help="flatbuffer binary file")
+    create_parser.set_defaults(func=create)
 
     try:
         args = parser.parse_args()
