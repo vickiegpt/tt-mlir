@@ -46,6 +46,22 @@ build `-DTTMLIR_ENABLE_RUNTIME=ON`.
 ttrt run out.ttnn
 ```
 
+## GitHub functionality with flatbuffer files
+
+Built in functionality using the ttrt tool to manage github issues with flatbuffer files
+
+### Create
+
+```ttrt create --issue flatbuffer out.ttnn``` will create a github issue titled 'flatbuffer' and will upload the out.ttnn file to the issue
+
+### Upload
+
+```ttrt upload --issue 1 out.ttnn``` will upload out.ttnn file to issue #1  on github
+
+### Download
+
+```ttrt download --issue 1 out.ttnn``` will download the ttnn file mentioned in the issue body to the out.ttnn file on your machine
+
 ## ttrt is written as a python library, so it can be used in custom python scripts
 
 ```python
