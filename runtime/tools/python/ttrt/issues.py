@@ -34,8 +34,8 @@ def upload(args):
 
     data = json.dumps({"body": args.binary})
 
-    response = requests.patch(
-        f"https://api.github.com/repos/ttdloke/mlir_workflows/issues/{args.issue}",
+    response = requests.post(
+        f"https://api.github.com/repos/ttdloke/mlir_workflows/issues/{args.issue}/comments",
         headers=headers,
         data=data,
     )
@@ -58,7 +58,28 @@ def download(args):
     )
 
     res = response.json()
-    f = open(args.binary, "w")
-    f.write(str(res))
-    f.close()
-    print("The file was just downloaded to: " + args.binary)
+    ans = ""
+    for word in res["body"].split(" "):
+        if word.endswith(".ttnn"):
+            ans = word
+            break
+    if ans == "":
+        response = requests.get(
+            f"https://api.github.com/repos/ttdloke/mlir_workflows/issues/{args.issue}/comments",
+            headers=headers,
+        )
+        res = response.json()
+        for comment in res:
+            for word in comment["body"].split(" "):
+                if word.endswith(".ttnn"):
+                    ans = word
+                    break
+            if ans != "":
+                break
+    if ans == "":
+        print("The github issue you are looking at has no flatbuffer file link")
+    else:
+        f = open(args.binary, "w")
+        f.write(ans)
+        f.close()
+        print("The file was just downloaded to: " + args.binary)
