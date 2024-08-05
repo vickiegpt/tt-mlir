@@ -181,109 +181,15 @@ ttrt perf --program-index 0 out.ttnn
 ttrt perf --device out.ttnn
 ttrt perf /dir/of/flatbuffers
 ttrt perf /dir/of/flatbuffers --loops 10
-ttrt perf /dir/of/flatbuffers --log-file ttrt.log
 ```
 
-### check
-Check a binary file or a directory of binary files against a system desc (by default, uses the host machine)
-Note: It's required to be on a system with silicon and to have a runtime enabled build `-DTTMLIR_ENABLE_RUNTIME=ON`.
+## ttrt is written as a python library, so it can be used in custom python scripts
 
-```bash
-ttrt check --help
-ttrt check out.ttnn
-ttrt check out.ttnn --system-desc /path/to/system_desc.ttsys
-ttrt check out.ttnn --clean-artifacts
-ttrt check out.ttnn --save-artifacts
-ttrt check out.ttnn --log-file ttrt.log
-ttrt check /dir/of/flatbuffers --system-desc /dir/of/system_desc
-```
+```python
+import ttrt.binary
 
-## ttrt as a python package
-
-The other way to use the APIs under ttrt is importing it as a library. This allows the user to use it in custom scripts.
-
-### Import ttrt as a python package
-```bash
-from ttrt.common.api import API
-```
-
-### Setup API and register all features
-```bash
-API.initialize_apis()
-```
-
-### Setup arguments
-You can specify certain arguments to pass to each API, or use the default arguments provided
-
-#### args
-This can be a dictionary of values to set inside your API instance. These are the same options as found via the command line. You can get the total list of support arguments via API.registered_args dictionary. Any argument not provided will be set to the default.
-```bash
-custom_args = API.Query.registered_args
-custom_args["clean-artifacts"] = True
-query_instance = API.Query(args=custom_args)
-
-custom_args = { "clean-artifacts": True }
-query_instance = API.Query(args=custom_args)
-```
-
-#### logging
-You can specify a specific logging module you want to set inside your API instance. The rationale behind this is to support different instances of different APIs, all being able to be logged to a different file.
-
-```bash
-from ttrt.common.util import Logger
-
-log_file_name = "some_file_name.log"
-custom_logger = Logger(log_file_name)
-read_instance = API.Read(logging=custom_logger)
-```
-
-#### artifacts
-You can specify a specific artifacts directory to store all the generate metadata during the execution of any API run. This allows you to specify different artifact directories if you wish for different instances of APIs.
-
-```bash
-from ttrt.common.util import Artifacts
-
-log_file_name = "some_file_name.log"
-artifacts_folder_path = "/opt/folder"
-custom_logger = Logger(log_file_name)
-custom_artifacts = Artifacts(logging=custom_logger, artifacts_folder_path=artifacts_folder_path)
-run_instance = API.Run(artifacts=custom_artifacts)
-```
-
-### Execute API
-Once all the arguments are setup, you can run your API instance with all your provided arguments. Note, APIs are stateless. Thus, subsequent calls to the same API instance will not preserve previous call artifacts. You can generate a new artifacts directory for subsequent runs if you wish to call the APIs multiple times, for example.
-
-```bash
-query_instance()
-read_instance()
-run_instance()
-```
-
-### Putting it all together
-You can do interesting stuff when combining all the above features into your python script
-
-```bash
-from ttrt.common.api import API
-from ttrt.common.util import Logger
-from ttrt.common.util import Artifacts
-
-API.initialize_apis()
-
-custom_args = API.Run.registered_args
-custom_args["clean-artifacts"] = True
-custom_args["save-artifacts"] = True
-custom_args["loops"] = 10
-custom_args["init"] = "randn"
-custom_args["binary"] = "/path/to/subtract.ttnn"
-
-log_file_name = "some_file_name.log"
-custom_logger = Logger(log_file_name)
-
-artifacts_folder_path = "/opt/folder"
-custom_artifacts = Artifacts(logging=custom_logger, artifacts_folder_path=artifacts_folder_path)
-
-run_instance = API.Run(args=custom_args, logging=custom_logger, artifacts=custom_artifacts)
-
+fbb = ttrt.binary.load_from_path("out.ttnn")
+d = ttrt.binary.as_dict(fbb)
 ```
 
 ## bonus
