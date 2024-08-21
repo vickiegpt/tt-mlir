@@ -201,6 +201,69 @@ ttrt check out.ttnn --log-file ttrt.log
 ttrt check /dir/of/flatbuffers --system-desc /dir/of/system_desc
 ```
 
+## ttrt remote development
+
+In cases where you want to develop MLIR on non TT hardware but still want to execute the flatbuffers, we support remote execution through the --remote flag. Unless stated here, ttrt --remote supports all flags ttrt includes
+
+### Setup for ttrt --remote
+
+For ttrt --remote to work, it requires the *TTRT_REMOTE_CONFIG* environment variable to be set to a json that contains all the information regarding the remote machines
+
+#### External Users
+
+External users can create this json following this template
+
+{
+  "remote": "127.0.0.1:8080"
+}
+
+where "remote" will be added to the end of the --remote flag and will be resolved to localhost port 8080 where the tt-dealer(Add link to tt-dealer repo) server code will be running. External users must set the value as the ip of the remote machine including the port the tt-dealer code is running on which is defaulted to 8080
+
+#### Internal Devs
+
+Internal developers looking to use ttrt --remote can find the json for *TTRT_REMOTE_CONFIG* in Slack in the #uhuru channel. Internal developers must also be on cloud VPN and have access to the tt-dealer team to access the remote machines (https://github.com/tenstorrent/tt-forge-internal/wiki/Getting-Started-with-TT%E2%80%90Cloud)
+
+### Running a flatbuffer remotely
+
+Here is an example using the remote config json we defined from earlier
+
+1. Build [ttmlir](./build.md)
+2. Build ttrt (see building section on this page)
+3. Set *TTRT_REMOTE_CONFIG* env variable
+```bash
+export TTRT_REMOTE_CONFIG="path/to/config.json"
+```
+4. Generate ttsys file from the remote system you want to compile for using ttrt. This will create a `system_desc.ttsys` file under the `extracted/remote` folder.
+```bash
+ttrt query --remote remote --save-artifacts --folder remote
+```
+5. Use ttmlir-opt tool in compiler to feed system descriptor. See the [ttmlir-opt](./ttmlir-opt.md) documentation for more information on how to generate .mlir files.
+```bash
+./build/bin/ttmlir-opt --ttir-load-system-desc="path=extracted/remote/system_desc.ttsys" --ttir-to-ttnn-backend-pipeline test/ttmlir/Dialect/TTNN/simple_subtract.mlir -o ttnn_n150.mlir
+```
+6. Use ttmlir-translate tool in compiler to generate the flatbuffer executable. See the [ttmlir-translate](./ttmlir-translate.md) documentation for more information on how to generate flatbuffer files.
+```bash
+./build/bin/ttmlir-translate --ttnn-to-flatbuffer ttnn.mlir -o out.ttnn
+```
+7. Run your test cases using ttrt
+```bash
+ttrt run --remote remote /path/to/out.ttnn
+```
+
+### upload
+
+As part of the remote functionality, we have added commmands for uploading flatbuffers to remote machines which will send back a url to the file
+```bash
+ttrt upload --remote remote /path/to/flatbuffer.ttnn
+```
+
+### download
+
+We also added support for downloading flatbuffers from remote machines allowing for sharing of flatbuffers
+```bash
+ttrt download http://127.0.0.1:8080/flatbuffers/784706.ttnn
+```
+
 ## ttrt as a python package
 
 The other way to use the APIs under ttrt is importing it as a library. This allows the user to use it in custom scripts.

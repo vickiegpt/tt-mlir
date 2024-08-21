@@ -16,7 +16,9 @@ from pkg_resources import get_distribution
 import sys
 import shutil
 import atexit
+import requests
 
+from ttrt.remote.util import *
 from ttrt.common.util import *
 
 
@@ -59,6 +61,20 @@ class API:
             default="",
             choices=None,
             help="log file to dump ttrt output to",
+        )
+        API.Query.register_arg(
+            name="--remote",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
+        )
+        API.Query.register_arg(
+            name="--folder",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
         )
 
         # register all read arguments
@@ -183,6 +199,20 @@ class API:
             choices=None,
             help="log file to dump ttrt output to",
         )
+        API.Run.register_arg(
+            name="--remote",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
+        )
+        API.Run.register_arg(
+            name="--folder",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
+        )
 
         # register all perf arguments
         API.Perf.register_arg(
@@ -219,6 +249,20 @@ class API:
             default="",
             choices=None,
             help="log file to dump ttrt output to",
+        )
+        API.Perf.register_arg(
+            name="--remote",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
+        )
+        API.Perf.register_arg(
+            name="--folder",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
         )
         up_stream_apis = API.Run.get_upstream_apis()
         for api in up_stream_apis:
@@ -267,12 +311,44 @@ class API:
             help="system desc to check against",
         )
 
+        API.Upload.register_arg(
+            name="--remote",
+            type=str,
+            default="",
+            choices=None,
+            help="remote machine to execute ttrt commands",
+        )
+        API.Upload.register_arg(
+            name="binary",
+            type=str,
+            default="",
+            choices=None,
+            help="flatbuffer binary file",
+        )
+
+        API.Download.register_arg(
+            name="url",
+            type=str,
+            default="",
+            choices=None,
+            help="url to flatbuffer binary file",
+        )
+        API.Download.register_arg(
+            name="--name",
+            type=str,
+            default="",
+            choices=None,
+            help="name to download",
+        )
+
         # register apis
         API.register_api(API.Query)
         API.register_api(API.Read)
         API.register_api(API.Run)
         API.register_api(API.Perf)
         API.register_api(API.Check)
+        API.register_api(API.Upload)
+        API.register_api(API.Download)
 
     @staticmethod
     def register_api(api_class):
@@ -347,6 +423,39 @@ class API:
                 raise Exception(f"an unexpected error occurred: {e}")
 
             self.logging.debug(f"finished executing query API")
+        
+        def remote_execute(self):
+            conf = os.getenv('TTRT_REMOTE_CONFIG')
+            if not conf:
+                self.logging.debug("TTRT_REMOTE_CONFIG environment variable is not set")
+                return
+            
+            with open(conf, 'r') as json_file:
+                data = json.load(json_file)
+            
+            if self.remote not in data:
+                self.logging.debug(f"Config json has no key {self.remote}")
+                return
+            server_url = data[self.remote]
+            command = "ttrt query"
+            if self.system_desc:
+                command += " --system-desc"
+            elif self.clean_artifacts:
+                command += " --clean-artifacts"
+            elif self.save_artifacts:
+                command += " --save-artifacts"
+
+            json_data = {"command": command}
+
+            response = requests.post(server_url + "/query", json = json_data)
+            
+            if response.status_code == 200:
+                if self.save_artifacts:
+                    saveArtifacts(response, self.folder)
+                else:
+                    print(response.json()['output'])
+            else:
+                print(response.status_code)
 
         def postprocess(self):
             self.logging.debug(f"postprocessing query API")
@@ -368,10 +477,13 @@ class API:
         def __call__(self):
             self.logging.debug(f"starting query API")
 
-            self.preprocess()
-            self.check_constraints()
-            self.execute()
-            self.postprocess()
+            if self["remote"]:
+                self.remote_execute()
+            else:
+                self.preprocess()
+                self.check_constraints()
+                self.execute()
+                self.postprocess()
 
             self.logging.debug(f"finished query API")
 
@@ -910,6 +1022,43 @@ class API:
             self.logging.debug(f"finished executing ttmetal binaries")
 
             self.logging.debug(f"finished executing run API")
+        
+        def remote_execute(self):
+            conf = os.getenv('TTRT_REMOTE_CONFIG')
+            if not conf:
+                self.logging.debug("TTRT_REMOTE_CONFIG environment variable is not set")
+                return
+            
+            with open(conf, 'r') as json_file:
+                data = json.load(json_file)
+            
+            if self.remote not in data:
+                self.logging.debug(f"Config json has no key {self.remote}")
+                return
+            server_url = data[self.remote]
+            fbs = getFlatbuffers(self.binary)
+            command = "ttrt run"
+            command += f" --program-index {self.program_index}"
+            
+            # Used by client side to insert flatbuffer into the position of the placeholder
+            command += " placeholder"
+            if int(self.loops) != 1:
+                command += f" --loops {self.loops}"
+            if self.clean_artifacts:
+                command += " --clean-artifacts"
+            if self.save_artifacts:
+                command += " --save-artifacts"
+
+            json_data = {"command": command}
+            response = requests.post(server_url + "/run", files = fbs, data={'json': json.dumps(json_data)})
+
+            if response.status_code == 200:
+                if self.save_artifacts:
+                    saveArtifacts(response, self.folder)
+                else:
+                    print(response.json()['output'])
+            else:
+                print(response.status_code)
 
         def postprocess(self):
             self.logging.debug(f"postprocessing run API")
@@ -935,10 +1084,13 @@ class API:
         def __call__(self):
             self.logging.debug(f"starting run API")
 
-            self.preprocess()
-            self.check_constraints()
-            self.execute()
-            self.postprocess()
+            if self["remote"]:
+                self.remote_execute()
+            else:
+                self.preprocess()
+                self.check_constraints()
+                self.execute()
+                self.postprocess()
 
             self.logging.debug(f"finished run API")
 
@@ -1303,6 +1455,43 @@ class API:
 
             self.logging.debug(f"finished executing perf API")
 
+        def remote_execute(self):
+            conf = os.getenv('TTRT_REMOTE_CONFIG')
+            if not conf:
+                self.logging.debug("TTRT_REMOTE_CONFIG environment variable is not set")
+                return
+            
+            with open(conf, 'r') as json_file:
+                data = json.load(json_file)
+            
+            if self.remote not in data:
+                self.logging.debug(f"Config json has no key {self.remote}")
+                return
+            server_url = data[self.remote]
+            fbs = getFlatbuffers(self.binary)
+            command = "ttrt perf"
+            command += f" --program-index {self.program_index}"
+            if int(self.device):
+                command += " --device"
+            command += " placeholder"
+            if int(self.loops) != 1:
+                command += f" --loops {self.loops}"
+            if self.clean_artifacts:
+                command += " --clean-artifacts"
+            if self.save_artifacts:
+                command += " --save-artifacts"
+
+            json_data = {"command": command}
+            response = requests.post(server_url + "/perf", files = fbs, data={'json': json.dumps(json_data)})
+
+            if response.status_code == 200:
+                if self.save_artifacts:
+                    saveArtifacts(response, self.folder)
+                else:
+                    print(response.json()['output'])
+            else:
+                print(response.status_code)
+
         def postprocess(self):
             self.logging.debug(f"postprocessing perf API")
 
@@ -1327,10 +1516,13 @@ class API:
         def __call__(self):
             self.logging.debug(f"starting perf API")
 
-            self.preprocess()
-            self.check_constraints()
-            self.execute()
-            self.postprocess()
+            if self["remote"]:
+                self.remote_execute()
+            else:
+                self.preprocess()
+                self.check_constraints()
+                self.execute()
+                self.postprocess()
 
             self.logging.debug(f"finished perf API")
 
@@ -1607,3 +1799,341 @@ class API:
                     )
 
             return check_parser
+    
+    class Upload:
+        registered_args = {}
+        api_only_arg = []
+
+        def __init__(self, args={}, logging=None, artifacts=None):
+            dummy = ""
+            for name, attributes in API.Upload.registered_args.items():
+                name = name if not name.startswith("-") else name.lstrip("-")
+                name = name.replace("-", "_")
+
+                if type(args) == dict:
+                    if name in args.keys():
+                        self[name] = args[name]
+                    else:
+                        self[name] = attributes["default"]
+                else:
+                    self[name] = getattr(args, name)
+
+            self.logger = logging if logging != None else Logger(self["log_file"])
+            self.logging = self.logger.get_logger()
+            self.globals = Globals(self.logger)
+            self.file_manager = FileManager(self.logger)
+            self.artifacts = (
+                artifacts
+                if artifacts != None
+                else Artifacts(self.logger, self.file_manager)
+            )
+            # self.query = API.Query({}, self.logger, self.artifacts)
+            # self.ttnn_binaries = []
+            # self.ttmetal_binaries = []
+            # self.system_desc_binaries = []
+
+        def preprocess(self):
+            # self.logging.debug(f"preprocessing check API")
+
+            if self["clean_artifacts"]:
+                self.artifacts.clean_artifacts()
+
+            if self["save_artifacts"]:
+                self.artifacts.create_artifacts()
+
+            # self.logging.debug(f"finished preprocessing check API")
+
+        def check_constraints(self):
+            # self.logging.debug(f"checking constraints for check API")
+
+            ttsys_binary_paths = self.file_manager.find_ttsys_binary_paths(
+                self["system_desc"]
+            )
+            ttnn_binary_paths = self.file_manager.find_ttnn_binary_paths(self["binary"])
+            ttmetal_binary_paths = self.file_manager.find_ttmetal_binary_paths(
+                self["binary"]
+            )
+
+            # self.logging.debug(f"ttsys_binary_paths={ttsys_binary_paths}")
+            # self.logging.debug(f"ttnn_binary_paths={ttnn_binary_paths}")
+            # self.logging.debug(f"ttmetal_binary_paths={ttmetal_binary_paths}")
+
+            for path in ttsys_binary_paths:
+                bin = SystemDesc(self.logger, self.file_manager, path)
+                if bin.check_version():
+                    self.system_desc_binaries.append(bin)
+
+            for path in ttnn_binary_paths:
+                bin = Binary(self.logger, self.file_manager, path)
+                if not bin.check_version():
+                    continue
+
+                self.ttnn_binaries.append(bin)
+
+            for path in ttmetal_binary_paths:
+                bin = Binary(self.logger, self.file_manager, path)
+                if not bin.check_version():
+                    continue
+
+                self.ttmetal_binaries.append(bin)
+
+            # self.logging.debug(f"finished checking constraints for check API")
+
+        def execute(self):
+            # self.logging.debug(f"executing upload API")
+            self._execute()
+            # self.logging.debug(f"finished executing upload API")
+        
+        def _execute(self):
+            conf = os.getenv('TTRT_REMOTE_CONFIG')
+            if not conf:
+                self.logging.debug("TTRT_REMOTE_CONFIG environment variable is not set")
+                return
+            
+            with open(conf, 'r') as json_file:
+                data = json.load(json_file)
+            
+            if self.remote not in data:
+                self.logging.debug(f"Config json has no key {self.remote}")
+                return
+            server_url = data[self.remote]
+            command = "ttrt upload"
+            json_data = {"command": command}
+            file = {self.binary: open(self.binary ,'rb')}
+            response = requests.post(server_url + "/upload", files = file, data={'json': json.dumps(json_data)})
+
+            if response.status_code == 200:
+                print(response.json()['output'])
+            else:
+                print(response.status_code)
+
+        def postprocess(self):
+            # self.logging.debug(f"postprocessing check API")
+
+            if self["save_artifacts"]:
+                for bin in self.ttnn_binaries:
+                    self.artifacts.save_binary(bin)
+
+                for bin in self.ttmetal_binaries:
+                    self.artifacts.save_binary(bin)
+
+            # self.logging.debug(f"finished postprocessing check API")
+
+        def __str__(self):
+            pass
+
+        def __getitem__(self, key):
+            return getattr(self, key)
+
+        def __setitem__(self, key, value):
+            setattr(self, key, value)
+
+        def __call__(self):
+            self.execute()
+
+        @staticmethod
+        def register_arg(name, type, default, choices, help, api_only=True):
+            API.Upload.registered_args[name] = {
+                "type": type,
+                "default": default,
+                "choices": choices,
+                "help": help,
+            }
+
+            if api_only:
+                API.Upload.api_only_arg.append(name)
+
+        @staticmethod
+        def get_upstream_apis():
+            upstream_apis = []
+            return upstream_apis
+
+        @staticmethod
+        def generate_subparser(subparsers):
+            check_parser = subparsers.add_parser(
+                "upload", help="upload flatbuffer to remote machine"
+            )
+            check_parser.set_defaults(api=API.Upload)
+
+            for name, attributes in API.Upload.registered_args.items():
+                if name == "binary":
+                    check_parser.add_argument(f"{name}", help=attributes["help"])
+                elif attributes["type"] == bool:
+                    check_parser.add_argument(
+                        f"{name}",
+                        action="store_true",
+                        help=attributes["help"],
+                    )
+                else:
+                    check_parser.add_argument(
+                        f"{name}",
+                        type=attributes["type"],
+                        default=attributes["default"],
+                        choices=attributes["choices"],
+                        help=attributes["help"],
+                    )
+
+            return check_parser
+    
+    class Download:
+        registered_args = {}
+        api_only_arg = []
+
+        def __init__(self, args={}, logging=None, artifacts=None):
+            for name, attributes in API.Download.registered_args.items():
+                name = name if not name.startswith("-") else name.lstrip("-")
+                name = name.replace("-", "_")
+
+                if type(args) == dict:
+                    if name in args.keys():
+                        self[name] = args[name]
+                    else:
+                        self[name] = attributes["default"]
+                else:
+                    self[name] = getattr(args, name)
+
+            # self.logger = logging if logging != None else Logger(self["log_file"])
+            # self.logging = self.logger.get_logger()
+            # self.globals = Globals(self.logger)
+            # self.file_manager = FileManager(self.logger)
+            # self.artifacts = (
+            #     artifacts
+            #     if artifacts != None
+            #     else Artifacts(self.logger, self.file_manager)
+            # )
+            # self.query = API.Query({}, self.logger, self.artifacts)
+            # self.ttnn_binaries = []
+            # self.ttmetal_binaries = []
+            # self.system_desc_binaries = []
+
+        def preprocess(self):
+            # self.logging.debug(f"preprocessing check API")
+
+            if self["clean_artifacts"]:
+                self.artifacts.clean_artifacts()
+
+            if self["save_artifacts"]:
+                self.artifacts.create_artifacts()
+
+            # self.logging.debug(f"finished preprocessing check API")
+
+        def check_constraints(self):
+            # self.logging.debug(f"checking constraints for check API")
+
+            ttsys_binary_paths = self.file_manager.find_ttsys_binary_paths(
+                self["system_desc"]
+            )
+            ttnn_binary_paths = self.file_manager.find_ttnn_binary_paths(self["binary"])
+            ttmetal_binary_paths = self.file_manager.find_ttmetal_binary_paths(
+                self["binary"]
+            )
+
+            # self.logging.debug(f"ttsys_binary_paths={ttsys_binary_paths}")
+            # self.logging.debug(f"ttnn_binary_paths={ttnn_binary_paths}")
+            # self.logging.debug(f"ttmetal_binary_paths={ttmetal_binary_paths}")
+
+            for path in ttsys_binary_paths:
+                bin = SystemDesc(self.logger, self.file_manager, path)
+                if bin.check_version():
+                    self.system_desc_binaries.append(bin)
+
+            for path in ttnn_binary_paths:
+                bin = Binary(self.logger, self.file_manager, path)
+                if not bin.check_version():
+                    continue
+
+                self.ttnn_binaries.append(bin)
+
+            for path in ttmetal_binary_paths:
+                bin = Binary(self.logger, self.file_manager, path)
+                if not bin.check_version():
+                    continue
+
+                self.ttmetal_binaries.append(bin)
+
+            # self.logging.debug(f"finished checking constraints for check API")
+
+        def execute(self):
+            # self.logging.debug(f"executing upload API")
+            self._execute()
+            # self.logging.debug(f"finished executing upload API")
+        
+        def _execute(self):
+            response = requests.get(self.url)
+            filepath = "download.ttnn"
+            if self.name != "":
+                filepath = self.name
+            
+            if response.status_code == 200:
+                with open(filepath, 'wb') as file:
+                    file.write(response.content)
+                print(f'File downloaded successfully as {filepath}')
+            else:
+                print(response.status_code)
+
+        def postprocess(self):
+            # self.logging.debug(f"postprocessing check API")
+
+            if self["save_artifacts"]:
+                for bin in self.ttnn_binaries:
+                    self.artifacts.save_binary(bin)
+
+                for bin in self.ttmetal_binaries:
+                    self.artifacts.save_binary(bin)
+
+            # self.logging.debug(f"finished postprocessing check API")
+
+        def __str__(self):
+            pass
+
+        def __getitem__(self, key):
+            return getattr(self, key)
+
+        def __setitem__(self, key, value):
+            setattr(self, key, value)
+
+        def __call__(self):
+            self.execute()
+
+        @staticmethod
+        def register_arg(name, type, default, choices, help, api_only=True):
+            API.Download.registered_args[name] = {
+                "type": type,
+                "default": default,
+                "choices": choices,
+                "help": help,
+            }
+
+            if api_only:
+                API.Download.api_only_arg.append(name)
+
+        @staticmethod
+        def get_upstream_apis():
+            upstream_apis = []
+            return upstream_apis
+
+        @staticmethod
+        def generate_subparser(subparsers):
+            check_parser = subparsers.add_parser(
+                "download", help="download flatbuffer from remote machine"
+            )
+            check_parser.set_defaults(api=API.Download)
+
+            for name, attributes in API.Download.registered_args.items():
+                if attributes["type"] == bool:
+                    check_parser.add_argument(
+                        f"{name}",
+                        action="store_true",
+                        help=attributes["help"],
+                    )
+                else:
+                    check_parser.add_argument(
+                        f"{name}",
+                        type=attributes["type"],
+                        default=attributes["default"],
+                        choices=attributes["choices"],
+                        help=attributes["help"],
+                    )
+
+            return check_parser
+
