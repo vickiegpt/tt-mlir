@@ -14,7 +14,8 @@ func.func @add(%arg0: tensor<64x128xf32>, %arg1: tensor<64x128xf32>) -> tensor<6
 
 func.func @ceil(%arg0: tensor<32x32xf32>) -> tensor<32x32xf32> {
   %0 = tensor.empty() : tensor<32x32xf32>
-  // CHECK: %[[C:.*]] = "ttnn.ceil"[[C:.*]]
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.ceil"(%{{[0-9]+}}, [[VAL0]])
   %1 = "ttir.ceil"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<32x32xf32>, tensor<32x32xf32>) -> tensor<32x32xf32>
   return %1 : tensor<32x32xf32>
 }
@@ -40,7 +41,8 @@ func.func @concat(%arg0: tensor<32x32xf32>, %arg1: tensor<32x64xf32>) -> tensor<
 
 func.func @cosine(%arg0: tensor<32x32xf32>) -> tensor<32x32xf32> {
   %0 = tensor.empty() : tensor<32x32xf32>
-  // CHECK: %[[C:.*]] = "ttnn.cos"[[C:.*]]
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.cos"(%{{[0-9]+}}, [[VAL0]])
   %1 = "ttir.cos"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<32x32xf32>, tensor<32x32xf32>) -> tensor<32x32xf32>
   return %1 : tensor<32x32xf32>
 }
@@ -193,7 +195,8 @@ func.func @sqrt(%arg0: tensor<64x128xf32>) -> tensor<64x128xf32> {
 
 func.func @sine(%arg0: tensor<32x32xf32>) -> tensor<32x32xf32> {
   %0 = tensor.empty() : tensor<32x32xf32>
-  // CHECK: %[[C:.*]] = "ttnn.sin"[[C:.*]]
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.sin"(%{{[0-9]+}}, [[VAL0]])
   %1 = "ttir.sin"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<32x32xf32>, tensor<32x32xf32>) -> tensor<32x32xf32>
   return %1 : tensor<32x32xf32>
 }
@@ -305,4 +308,36 @@ func.func @addint32(%arg0: tensor<64x128xi32>, %arg1: tensor<64x128xi32>) -> ten
   %0 = tensor.empty() : tensor<64x128xi32>
   %1 = "ttir.add"(%arg0, %arg1, %0) <{operandSegmentSizes = array<i32: 2, 1>, operand_constraints = [#any_device, #any_device, #any_device]}> : (tensor<64x128xi32>, tensor<64x128xi32>, tensor<64x128xi32>) -> tensor<64x128xi32>
   return %1 : tensor<64x128xi32>
+}
+
+func.func @logit(%arg0: tensor<64x128xf32>) -> tensor<64x128xbf16> {
+  %0 = tensor.empty() : tensor<64x128xbf16>
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.logit"(%{{[0-9]+}}, [[VAL0]])
+  %1 = "ttir.logit"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<64x128xf32>, tensor<64x128xbf16>) -> tensor<64x128xbf16>
+  return %1 : tensor<64x128xbf16>
+}
+
+func.func @tan(%arg0: tensor<64x128xf32>) -> tensor<64x128xbf16> {
+  %0 = tensor.empty() : tensor<64x128xbf16>
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.tan"(%{{[0-9]+}}, [[VAL0]])
+  %1 = "ttir.tan"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<64x128xf32>, tensor<64x128xbf16>) -> tensor<64x128xbf16>
+  return %1 : tensor<64x128xbf16>
+}
+
+func.func @tanh(%arg0: tensor<64x128xf32>) -> tensor<64x128xbf16> {
+  %0 = tensor.empty() : tensor<64x128xbf16>
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.tanh"(%{{[0-9]+}}, [[VAL0]])
+  %1 = "ttir.tanh"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<64x128xf32>, tensor<64x128xbf16>) -> tensor<64x128xbf16>
+  return %1 : tensor<64x128xbf16>
+}
+
+func.func @log(%arg0: tensor<64x128xf32>) -> tensor<64x128xbf16> {
+  %0 = tensor.empty() : tensor<64x128xbf16>
+  // CHECK: [[VAL0:%[0-9]+]] = "ttnn.empty"(%{{[0-9]+}})
+  // CHECK: %{{[0-9]+}} = "ttnn.log"(%{{[0-9]+}}, [[VAL0]])
+  %1 = "ttir.log"(%arg0, %0) <{operandSegmentSizes = array<i32: 1, 1>, operand_constraints = [#any_device, #any_device]}> : (tensor<64x128xf32>, tensor<64x128xbf16>) -> tensor<64x128xbf16>
+  return %1 : tensor<64x128xbf16>
 }
