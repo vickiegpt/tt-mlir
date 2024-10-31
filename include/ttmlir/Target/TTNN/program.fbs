@@ -102,7 +102,7 @@ enum EltwiseOpType: uint32 {
   LogicalXor = 37,
   Clamp = 38,
   LeakyRelu = 39,
-  Logistic = 40,
+  Logit = 40,
   Tan = 41,
   Tanh = 42
 }
