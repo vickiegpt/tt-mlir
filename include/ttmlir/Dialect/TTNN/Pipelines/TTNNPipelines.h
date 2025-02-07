@@ -140,7 +140,7 @@ struct TTIRToTTNNBackendPipelineOptions
   Option<bool> repeatFoldingWorkaroundEnabled{
       *this, "enable-repeat-folding-workaround-pass",
       llvm::cl::desc("Enable repeat folding workaround pass."),
-      llvm::cl::init(true)};
+      llvm::cl::init(false)};
 
   Option<bool> implicitBroadcastFoldingEnabled{
       *this, "enable-implicit-broadcast-folding-pass",

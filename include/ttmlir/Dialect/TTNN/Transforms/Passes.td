@@ -46,7 +46,7 @@ def TTNNWorkarounds : Pass<"ttnn-workaround", "::mlir::ModuleOp"> {
              "TTNN Decompsition Workarounds Pass">,
       Option<"repeatFoldingWorkaroundEnabled",
              "ttnn-enable-repeat-folding-workaround-pass",
-             "bool", /*default=*/"true",
+             "bool", /*default=*/"false",
              "TTNN Repeat Folding Workaround Pass">,
   ];
 }
