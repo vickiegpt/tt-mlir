@@ -4,6 +4,7 @@ add_mlir_dialect_library(MLIRTTIRTransforms
         Constant.cpp
         GenericLinearizeMemref.cpp
         GenericGenerateDatamovement.cpp
+        GenericGenerateLoops.cpp
         AttachMetalLayout.cpp
         OptimizeTensorLayout.cpp
         HoistCPUOps.cpp
@@ -17,4 +18,7 @@ add_mlir_dialect_library(MLIRTTIRTransforms
         MLIRTTIROpsIncGen
         MLIRTTIRPassesIncGen
         MLIRTTOpsIncGen
+
+        LINK_LIBS PUBLIC
+        MLIRTTIRAnalysis
         )
