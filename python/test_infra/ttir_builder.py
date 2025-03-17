@@ -1354,3 +1354,141 @@ class TTIRBuilder:
 
     def maximum(self, in0: Operand, in1: Operand) -> OpView:
         return self.eltwise_proxy(torch.maximum, ttir.MaximumOp, [in0, in1])
+
+    # CCL ops
+    def all_gather(
+        self,
+        input: Operand,
+        all_gather_dim: int = None,
+        cluster_axis: int = None,
+        output_shape=None,
+    ) -> OpView:
+        kwargs = {"all_gather_dim": all_gather_dim, "cluster_axis": cluster_axis}
+        return self.op_proxy(
+            None,
+            ttir.AllGatherOp,
+            [input],
+            ttir_kwargs=kwargs,
+            organize_ttir_args=lambda i, o, shape: (
+                self._get_type(o),
+                i[0],
+                o,
+            ),
+            output_shape=output_shape,
+            output_type=self.get_type_from_torch_dtype(
+                self._get_golden_tensor(input).dtype
+            ),
+        )
+
+    def all_reduce(
+        self,
+        input: Operand,
+        reduce_type: str,
+        cluster_axis: int = None,
+        output_shape=None,
+    ) -> OpView:
+        _reduce_type = Attribute.parse(reduce_type)
+        kwargs = {"reduce_type": _reduce_type, "cluster_axis": cluster_axis}
+        return self.op_proxy(
+            None,
+            ttir.AllReduceOp,
+            [input],
+            ttir_kwargs=kwargs,
+            organize_ttir_args=lambda i, o, shape: (
+                self._get_type(o),
+                i[0],
+                o,
+            ),
+            output_shape=output_shape,
+            output_type=self.get_type_from_torch_dtype(
+                self._get_golden_tensor(input).dtype
+            ),
+        )
+
+    def reduce_scatter(
+        self,
+        input: Operand,
+        reduce_type: str,
+        scatter_dim=3,
+        cluster_axis: int = None,
+        output_shape=None,
+    ) -> OpView:
+        _reduce_type = Attribute.parse(reduce_type)
+        kwargs = {
+            "reduce_type": _reduce_type,
+            "scatter_dim": scatter_dim,
+            "cluster_axis": cluster_axis,
+        }
+        return self.op_proxy(
+            None,
+            ttir.ReduceScatterOp,
+            [input],
+            ttir_kwargs=kwargs,
+            organize_ttir_args=lambda i, o, shape: (
+                self._get_type(o),
+                i[0],
+                o,
+            ),
+            output_shape=output_shape,
+            output_type=self.get_type_from_torch_dtype(
+                self._get_golden_tensor(input).dtype
+            ),
+        )
+
+    def collective_permute(
+        self,
+        input: Operand,
+        source_target_pairs: List[Tuple[int, int]],
+        output_shape=None,
+    ) -> OpView:
+        kwargs = {
+            "source_target_pairs": source_target_pairs,
+        }
+        return self.op_proxy(
+            None,
+            ttir.CollectivePermuteOp,
+            [input],
+            ttir_kwargs=kwargs,
+            organize_ttir_args=lambda i, o, shape: (
+                self._get_type(o),
+                i[0],
+                o,
+            ),
+            output_shape=output_shape,
+            output_type=self.get_type_from_torch_dtype(
+                self._get_golden_tensor(input).dtype
+            ),
+        )
+
+    def mesh_shard(
+        self,
+        input: Operand,
+        shard_type: str,
+        shard_direction: str,
+        shard_shape: Tuple[int, ...],
+        shard_dims: Tuple[int, ...],
+        output_shape=None,
+    ) -> OpView:
+        _shard_type = Attribute.parse(shard_type)
+        _shard_direction = Attribute.parse(shard_direction)
+        kwargs = {
+            "shard_type": _shard_type,
+            "shard_direction": _shard_direction,
+            "shard_shape": shard_shape,
+            "shard_dims": shard_dims,
+        }
+        return self.op_proxy(
+            None,
+            ttir.MeshShardOp,
+            [input],
+            organize_ttir_args=lambda i, o, shape: (
+                self._get_type(o),
+                i[0],
+                o,
+            ),
+            ttir_kwargs=kwargs,
+            output_shape=output_shape,
+            output_type=self.get_type_from_torch_dtype(
+                self._get_golden_tensor(input).dtype
+            ),
+        )
