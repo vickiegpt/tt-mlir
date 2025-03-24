@@ -33,6 +33,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/LogicalResult.h"
+#include <optional>
 
 #define GET_OP_CLASSES
 #include "ttmlir/Dialect/TT/IR/TTOpsDialect.h.inc"
@@ -1113,6 +1114,7 @@ public:
         emitter.emit(srcOp.getInput()),
         emitter.emit(srcOp.getMemoryConfig()) |
             emitter.getMemoryConfig(srcOp.getResult()),
+        /*dtype=*/emitter.emit(std::nullopt),
     };
 
     emitter.replaceOp(*this, args);

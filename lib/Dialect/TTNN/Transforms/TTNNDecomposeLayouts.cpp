@@ -181,7 +181,7 @@ private:
            output.bufferType == ttnn::BufferType::DRAM);
       // If shard grids don't match we need to reshard
       opsToCreate.createToMemoryConfigOp |=
-          (input.isL1Sharded() and output.isL1Sharded() and
+          (input.isL1Sharded() && output.isL1Sharded() &&
            input.shardGrid != output.shardGrid);
     }
     return opsToCreate;
