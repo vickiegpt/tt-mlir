@@ -60,6 +60,7 @@ def compile_as_mlir_module(
     inputs_shapes: List[Shape],
     inputs_types: Optional[List[torch.dtype]] = None,
     mesh_shape: Optional[Tuple[int, int]] = None,
+    output_golden: Optional[torch.Tensor] = None,
     module_dump: bool = False,
 ):
     """
@@ -159,6 +160,10 @@ def compile_as_mlir_module(
                 # Randomly generate golden tensors for function inputs.
                 for index, (operand, dtype) in enumerate(zip(inputs, inputs_types)):
                     builder.generate_input_golden(operand, dtype, index)
+
+                # Store provided tensor as golden output
+                if output_golden is not None:
+                    builder.store_graph_output_golden(output_golden)
 
                 return test_fn(*inputs, builder=builder)
 
@@ -315,6 +320,7 @@ def compile_to_flatbuffer(
     test_name: Optional[str] = None,
     targets: List[str] = ["ttmetal", "ttnn"],
     mesh_shape: Tuple[int, int] = None,
+    output_golden: Optional[torch.Tensor] = None,
     module_dump: bool = False,
 ):
     """
@@ -395,7 +401,7 @@ def compile_to_flatbuffer(
 
             if "ttnn" in targets:
                 module, builder = compile_as_mlir_module(
-                    test_fn, inputs_shapes, inputs_types, mesh_shape
+                    test_fn, inputs_shapes, inputs_types, mesh_shape, output_golden
                 )
 
                 if module_dump:
