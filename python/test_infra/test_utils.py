@@ -5,7 +5,7 @@
 import os
 import inspect
 import torch
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Dict, Any
 
 from ttmlir.dialects import func
 from ttmlir.ir import *
@@ -60,6 +60,8 @@ def compile_as_mlir_module(
     inputs_shapes: List[Shape],
     inputs_types: Optional[List[torch.dtype]] = None,
     mesh_shape: Optional[Tuple[int, int]] = None,
+    graph_golden_fn: Optional[Callable] = None,
+    graph_golden_kwargs: Optional[Dict[str, Any]] = None,
     module_dump: bool = False,
 ):
     """
@@ -157,8 +159,20 @@ def compile_as_mlir_module(
             @func.func(*test_fn_input_types, name=test_fn.__name__)
             def decorated_func(*inputs):
                 # Randomly generate golden tensors for function inputs.
+                input_goldens = []
                 for index, (operand, dtype) in enumerate(zip(inputs, inputs_types)):
                     builder.generate_input_golden(operand, dtype, index)
+                    input_goldens.append(builder._get_golden(operand).tensor)
+
+                # Generate golden tensors for graph outputs.
+                output_golden = None
+                if graph_golden_fn is not None:
+                    output_golden = graph_golden_fn(
+                        input_goldens, **graph_golden_kwargs
+                    )
+                # Store provided tensor as golden output
+                if output_golden is not None:
+                    builder.store_graph_output_golden(output_golden)
 
                 return test_fn(*inputs, builder=builder)
 
@@ -315,6 +329,8 @@ def compile_to_flatbuffer(
     test_name: Optional[str] = None,
     targets: List[str] = ["ttmetal", "ttnn"],
     mesh_shape: Tuple[int, int] = None,
+    graph_golden_fn: Optional[Callable] = None,
+    graph_golden_kwargs: Optional[Dict[str, Any]] = None,
     module_dump: bool = False,
 ):
     """
@@ -395,7 +411,12 @@ def compile_to_flatbuffer(
 
             if "ttnn" in targets:
                 module, builder = compile_as_mlir_module(
-                    test_fn, inputs_shapes, inputs_types, mesh_shape
+                    test_fn,
+                    inputs_shapes,
+                    inputs_types,
+                    mesh_shape,
+                    graph_golden_fn,
+                    graph_golden_kwargs,
                 )
 
                 if module_dump:

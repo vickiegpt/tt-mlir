@@ -172,6 +172,13 @@ class TTIRBuilder:
             operand, dtype
         )
 
+    def store_graph_output_golden(self, output_golden: torch.Tensor) -> None:
+        """
+        Store provided tensor as golden output of whole graph.
+        ToDo: add support for multiple outputs
+        """
+        self.id_golden_map["output_0"] = Golden(output_golden)
+
     def get_golden_map(self) -> Dict:
         golden_info = {}
         for name, golden_tensor in self.id_golden_map.items():
