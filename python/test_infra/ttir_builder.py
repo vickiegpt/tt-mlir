@@ -1306,3 +1306,46 @@ class TTIRBuilder:
 
     def maximum(self, in0: Operand, in1: Operand) -> OpView:
         return self.eltwise_proxy(torch.maximum, ttir.MaximumOp, [in0, in1])
+
+    def scatter(
+        self,
+        in0: Operand,
+        scatter_indices: Operand,
+        update: Operand,
+        update_window_dims: List[int],
+        inserted_window_dims: List[int],
+        input_batching_dims: List[int],
+        scatter_indices_batching_dims: List[int],
+        scatter_dims_to_operand_dims: List[int],
+        index_vector_dim: int = 1,
+        indices_are_sorted: bool = False,
+        unique_indices: bool = False,
+    ) -> OpView:
+        tbd = 0
+        t_kwargs = {
+            "scatter_indices": scatter_indices,
+            "update": update,
+            "update_window_dims": update_window_dims,
+            "inserted_window_dims": inserted_window_dims,
+            "input_batching_dims": input_batching_dims,
+            "scatter_indices_batching_dims": scatter_indices_batching_dims,
+            "scatter_dims_to_operand_dims": scatter_dims_to_operand_dims,
+            "index_vector_dim": index_vector_dim,
+            "indices_are_sorted": indices_are_sorted,
+            "unique_indices": unique_indices,
+        }
+        g_kwargs = {"dim": 0}  # ***
+        return self.op_proxy(
+            torch.Tensor.scatter_,
+            ttir.ScatterOp,
+            [in0, scatter_indices, update],
+            ttir_kwargs=t_kwargs,
+            # golden_kwargs=g_kwargs,
+            organize_ttir_args=lambda i, o, _: (self._get_type(o), i[0], i[1], o),
+            organize_golden_args=lambda i: (
+                self._get_golden_tensor(i[0]),
+                0,
+                self._get_golden_tensor(i[1]).to(dtype=torch.int64),
+                self._get_golden_tensor(i[2]),
+            ),
+        )

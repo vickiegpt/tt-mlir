@@ -729,6 +729,32 @@ def test_embedding(in0: Operand, in1: Operand, builder: TTIRBuilder):
 
 @compile_to_flatbuffer(
     [
+        (1, 3, 320, 320),
+        (1, 1),
+        (1, 3, 32, 32),
+        # (1, 3, 320, 320),
+    ],
+    inputs_types=[torch.float32, torch.int32, torch.float32],  # , torch.float32],
+    targets=["ttnn"],
+)
+def test_scatter(in0: Operand, in1: Operand, in2: Operand, builder: TTIRBuilder):
+    return builder.scatter(
+        in0,
+        in1,
+        in2,
+        index_vector_dim=1,
+        indices_are_sorted=False,
+        input_batching_dims=[],
+        inserted_window_dims=[0],
+        scatter_dims_to_operand_dims=[0],
+        scatter_indices_batching_dims=[],
+        unique_indices=False,
+        update_window_dims=[1, 2, 3],
+    )
+
+
+@compile_to_flatbuffer(
+    [
         (32, 32),
         (32, 32),
         (32, 32),
@@ -782,5 +808,5 @@ if __name__ == "__main__":
     )
 
     for function_name, func in test_functions:
-        if function_name.startswith("test_"):
+        if function_name.startswith("test_scat"):
             func()
