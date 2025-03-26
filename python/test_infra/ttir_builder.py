@@ -81,6 +81,7 @@ class Golden:
     # wrapped around user-written op graph. Every other tensor is output of some
     # op from graph.
     seed: int = None
+    dummy: bool = False
 
     def __repr__(self) -> str:
         s = f"\nRandom seed: {self.seed}" if self.seed is not None else ""
@@ -182,6 +183,8 @@ class TTIRBuilder:
     def get_golden_map(self) -> Dict:
         golden_info = {}
         for name, golden_tensor in self.id_golden_map.items():
+            if golden_tensor.dummy is True:
+                continue
             golden_tensor = golden_tensor.contiguous()
             golden_info[name] = GoldenTensor(
                 name,
@@ -372,7 +375,7 @@ class TTIRBuilder:
 
     def op_proxy(
         self,
-        op_golden_function: Callable,
+        op_golden_function: Optional[Callable],
         op_ttir_function: Callable,
         inputs: List[Operand],
         unit_attrs: List[str] = None,
@@ -435,22 +438,28 @@ class TTIRBuilder:
         with self._ctx, self._loc:
             # Compute the golden
             # Account for cases in which golden_arg organization is not needed:
-            if (
-                not isinstance(organize_golden_args(inputs), torch.Tensor)
-                and organize_golden_args(inputs) == 0
-            ):
-                golden_output = op_golden_function(**golden_kwargs)
-            else:
-                golden_output = op_golden_function(
-                    *(organize_golden_args(inputs)),
-                    **golden_kwargs,
-                )
+            if op_golden_function is not None:
+                if (
+                    not isinstance(organize_golden_args(inputs), torch.Tensor)
+                    and organize_golden_args(inputs) == 0
+                ):
+                    golden_output = op_golden_function(**golden_kwargs)
+                else:
+                    golden_output = op_golden_function(
+                        *(organize_golden_args(inputs)),
+                        **golden_kwargs,
+                    )
 
-            golden = (
-                Golden(golden_output[0])
-                if not isinstance(golden_output, torch.Tensor)
-                else Golden(golden_output)
-            )
+                golden = (
+                    Golden(golden_output[0])
+                    if not isinstance(golden_output, torch.Tensor)
+                    else Golden(golden_output)
+                )
+            else:
+                dummy_tensor = torch.zeros(
+                    output_shape, dtype=self._get_golden_tensor(inputs[0]).dtype
+                )
+                golden = Golden(dummy_tensor, None, True)
 
             # Use the golden output to determine proper output shape and type unless otherwise specified
             output_shape = golden.tensor.shape if not output_shape else output_shape
@@ -488,7 +497,6 @@ class TTIRBuilder:
 
                 for attr_name in unit_attrs:
                     op.operation.attributes[attr_name] = UnitAttr.get(self._ctx)
-
             self.id_golden_map[str(loc)] = golden
             self._store_golden(op, golden)
             self._override_golden(output, golden)
