@@ -348,7 +348,8 @@ class TTIRBuilder:
         """Convenience wrapper constructing `ttir.EmptyOp`."""
         dtype = data_type if data_type is not None else self._default_dtype
         with self._ctx, self._loc:
-            op = ttir.EmptyOp(RankedTensorType.get(shape, dtype))
+            # op = ttir.EmptyOp(RankedTensorType.get(shape, dtype))
+            op = tensor.EmptyOp(shape, dtype)
 
             self.generate_and_store_random_golden(op)
 
@@ -810,9 +811,6 @@ class TTIRBuilder:
             ttir_kwargs={"dim": dim, "output": in1},
             organize_ttir_args=lambda i, o, _: (self._get_type(o), i[0]),
             organize_golden_args=lambda i: [self._get_golden_tensor(i[0])],
-            output_type=self.get_type_from_torch_dtype(
-                self._get_golden_tensor(in1).dtype
-            ),
         )
 
     def softmax(self, in0: Operand, dimension: int = 1) -> OpView:
@@ -1344,7 +1342,7 @@ class TTIRBuilder:
             organize_ttir_args=lambda i, o, _: (self._get_type(o), i[0], i[1], o),
             organize_golden_args=lambda i: (
                 self._get_golden_tensor(i[0]),
-                0,
+                index_vector_dim,
                 self._get_golden_tensor(i[1]).to(dtype=torch.int64),
                 self._get_golden_tensor(i[2]),
             ),

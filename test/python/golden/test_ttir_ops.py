@@ -808,5 +808,5 @@ if __name__ == "__main__":
     )
 
     for function_name, func in test_functions:
-        if function_name.startswith("test_scat"):
+        if function_name.startswith("test_cum"):
             func()

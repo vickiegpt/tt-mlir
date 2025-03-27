@@ -362,7 +362,7 @@ def debugger(callback_runtime_config, binary, program_context, op_context):
     pdb.set_trace()
 
 
-def callback(callback_runtime_config, binary, program_context, op_context):
+def pre_callback(callback_runtime_config, binary, program_context, op_context):
 
     if callback_runtime_config.enable_golden:
         golden(callback_runtime_config, binary, program_context, op_context)
@@ -374,5 +374,21 @@ def callback(callback_runtime_config, binary, program_context, op_context):
         debugger(callback_runtime_config, binary, program_context, op_context)
 
 
-def get_callback_fn(callback_runtime_config):
+def get_pre_callback_fn(callback_runtime_config):
+    return partial(callback, callback_runtime_config)
+
+
+def post_callback(callback_runtime_config, binary, program_context, op_context):
+
+    if callback_runtime_config.enable_golden:
+        golden(callback_runtime_config, binary, program_context, op_context)
+
+    if callback_runtime_config.enable_memory:
+        memory(callback_runtime_config, binary, program_context, op_context)
+
+    if callback_runtime_config.enable_debugger:
+        debugger(callback_runtime_config, binary, program_context, op_context)
+
+
+def get_post_callback_fn(callback_runtime_config):
     return partial(callback, callback_runtime_config)
