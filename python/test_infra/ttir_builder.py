@@ -348,8 +348,7 @@ class TTIRBuilder:
         """Convenience wrapper constructing `ttir.EmptyOp`."""
         dtype = data_type if data_type is not None else self._default_dtype
         with self._ctx, self._loc:
-            # op = ttir.EmptyOp(RankedTensorType.get(shape, dtype))
-            op = tensor.EmptyOp(shape, dtype)
+            op = ttir.EmptyOp(RankedTensorType.get(shape, dtype))
 
             self.generate_and_store_random_golden(op)
 
@@ -983,7 +982,7 @@ class TTIRBuilder:
                 "groups": groups,
             },
             ttir_kwargs={
-                "stride": stride,
+                "stride": 1,  # stride,
                 "padding": padding,
                 "output_padding": output_padding,
                 "dilation": dilation,
@@ -1319,10 +1318,7 @@ class TTIRBuilder:
         indices_are_sorted: bool = False,
         unique_indices: bool = False,
     ) -> OpView:
-        tbd = 0
         t_kwargs = {
-            "scatter_indices": scatter_indices,
-            "update": update,
             "update_window_dims": update_window_dims,
             "inserted_window_dims": inserted_window_dims,
             "input_batching_dims": input_batching_dims,
@@ -1332,18 +1328,17 @@ class TTIRBuilder:
             "indices_are_sorted": indices_are_sorted,
             "unique_indices": unique_indices,
         }
-        g_kwargs = {"dim": 0}  # ***
+        indices = (1,) * self._get_golden_tensor(in0).dim()
         return self.op_proxy(
             torch.Tensor.scatter_,
             ttir.ScatterOp,
             [in0, scatter_indices, update],
             ttir_kwargs=t_kwargs,
-            # golden_kwargs=g_kwargs,
-            organize_ttir_args=lambda i, o, _: (self._get_type(o), i[0], i[1], o),
+            organize_ttir_args=lambda i, o, _: (self._get_type(o), i[0], i[1], i[2], o),
             organize_golden_args=lambda i: (
                 self._get_golden_tensor(i[0]),
                 index_vector_dim,
-                self._get_golden_tensor(i[1]).to(dtype=torch.int64),
+                torch.zeros(indices, dtype=torch.int64),
                 self._get_golden_tensor(i[2]),
             ),
         )

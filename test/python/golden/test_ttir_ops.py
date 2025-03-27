@@ -732,9 +732,8 @@ def test_embedding(in0: Operand, in1: Operand, builder: TTIRBuilder):
         (1, 3, 320, 320),
         (1, 1),
         (1, 3, 32, 32),
-        # (1, 3, 320, 320),
     ],
-    inputs_types=[torch.float32, torch.int32, torch.float32],  # , torch.float32],
+    inputs_types=[torch.float32, torch.int32, torch.float32],
     targets=["ttnn"],
 )
 def test_scatter(in0: Operand, in1: Operand, in2: Operand, builder: TTIRBuilder):
@@ -808,5 +807,5 @@ if __name__ == "__main__":
     )
 
     for function_name, func in test_functions:
-        if function_name.startswith("test_cum"):
+        if function_name.startswith("test_"):
             func()
