@@ -44,14 +44,15 @@ void run(const ::tt::target::ttnn::CollectivePermuteOp *op,
   // Iterate through originalDeviceTensors and create mapping of device_id :
   // owned_storage. Also store device id to IDevice mapping.
   std::unordered_map<int, ::ttnn::Tensor> mappedOwnedStorageTensors;
-  std::unordered_map<int, ::ttnn::IDevice *> mappedDeviceIds;
+  std::unordered_map<int, ::ttnn::IDevice *> mappedDevices;
 
-  for (const auto &tensor : originalDeviceTensors) {
+  for (size_t logicalIdx = 0; logicalIdx < originalDeviceTensors.size();
+       ++logicalIdx) {
+    auto &tensor = originalDeviceTensors[logicalIdx];
     auto *tensorDevice = tensor.device();
-    auto deviceId = tensorDevice->id();
     ::ttnn::Tensor hostTensor = ::ttnn::from_device(tensor);
-    mappedOwnedStorageTensors[deviceId] = hostTensor;
-    mappedDeviceIds[deviceId] = tensorDevice;
+    mappedOwnedStorageTensors[logicalIdx] = hostTensor;
+    mappedDevices[logicalIdx] = tensorDevice;
   }
 
   // Iterate through sourceTargetPairs and for each pair, get the source tensor
@@ -69,8 +70,8 @@ void run(const ::tt::target::ttnn::CollectivePermuteOp *op,
                "Could not find device id in owned storage tensor map!");
     auto srcHostTensor = srcHostTensorIt->second;
 
-    auto deviceIt = mappedDeviceIds.find(dest);
-    LOG_ASSERT(deviceIt != mappedDeviceIds.end(),
+    auto deviceIt = mappedDevices.find(dest);
+    LOG_ASSERT(deviceIt != mappedDevices.end(),
                "Could not find device id in device map!");
     auto *device = deviceIt->second;
 
@@ -93,8 +94,8 @@ void run(const ::tt::target::ttnn::CollectivePermuteOp *op,
                "Could not find device id in owned storage tensor map!");
     auto srcHostTensor = srcHostTensorIt->second;
 
-    auto deviceIt = mappedDeviceIds.find(i);
-    LOG_ASSERT(deviceIt != mappedDeviceIds.end(),
+    auto deviceIt = mappedDevices.find(i);
+    LOG_ASSERT(deviceIt != mappedDevices.end(),
                "Could not find device id in device map!");
     auto *device = deviceIt->second;
 
