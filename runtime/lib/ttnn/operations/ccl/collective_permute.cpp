@@ -46,12 +46,15 @@ void run(const ::tt::target::ttnn::CollectivePermuteOp *op,
   std::unordered_map<int, ::ttnn::Tensor> mappedOwnedStorageTensors;
   std::unordered_map<int, ::ttnn::IDevice *> mappedDeviceIds;
 
-  for (const auto &tensor : originalDeviceTensors) {
+  for (size_t logicalIdx = 0; logicalIdx < originalDeviceTensors.size();
+       logicalIdx++) {
+    auto &tensor = originalDeviceTensors[logicalIdx];
     auto *tensorDevice = tensor.device();
     auto deviceId = tensorDevice->id();
     ::ttnn::Tensor hostTensor = ::ttnn::from_device(tensor);
-    mappedOwnedStorageTensors[deviceId] = hostTensor;
-    mappedDeviceIds[deviceId] = tensorDevice;
+    LOG_INFO("[", logicalIdx, "] -> [", deviceId, "]");
+    mappedOwnedStorageTensors[logicalIdx] = hostTensor;
+    mappedDeviceIds[logicalIdx] = tensorDevice;
   }
 
   // Iterate through sourceTargetPairs and for each pair, get the source tensor
