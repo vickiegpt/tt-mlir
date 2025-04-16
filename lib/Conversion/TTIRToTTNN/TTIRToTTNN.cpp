@@ -606,10 +606,13 @@ public:
       dim += cast<RankedTensorType>(adaptor.getInputs().front().getType())
                  .getRank();
     }
-    rewriter.replaceOpWithNewOp<ttnn::ConcatOp>(
-        op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInputs(), dim,
-        /* memory_config */ nullptr);
+
+    RankedTensorType rtt =
+        RankedTensorType::get(op.getType().getShape(), rewriter.getF64Type(),
+                              op.getType().getEncoding());
+    rewriter.replaceOpWithNewOp<ttnn::ConcatOp>(op, rtt, adaptor.getInputs(),
+                                                dim,
+                                                /* memory_config */ nullptr);
     return success();
   }
 };
