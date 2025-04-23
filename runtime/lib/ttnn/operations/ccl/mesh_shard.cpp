@@ -2,10 +2,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "tt/runtime/ttnn/operations/utils.h"
-
 #include "operations/ccl/mesh_shard.h"
-#include "operations/ccl/mesh_shard_impl.h"
+#include "tt/runtime/ttnn/operations/utils.h"
+#include "ttnn/distributed/distributed_tensor.hpp"
 
 namespace tt::runtime::ttnn::operations::ccl {
 void run(const ::tt::target::ttnn::MeshShardOp *op, ProgramContext &context) {
@@ -13,16 +12,15 @@ void run(const ::tt::target::ttnn::MeshShardOp *op, ProgramContext &context) {
   const ::ttnn::Tensor &input = tensorPool.getTTNNTensorAndValidate(op->in());
   ::ttnn::MeshDevice &meshDevice =
       context.getSubMesh(op->device()->global_id());
-  const mesh_shard::MeshShardDirection shardDirection =
-      static_cast<mesh_shard::MeshShardDirection>(op->shard_direction());
-  const mesh_shard::MeshShardType shardType =
-      static_cast<mesh_shard::MeshShardType>(op->shard_type());
+  const ::tt::target::ttnn::MeshShardDirection shardDirection =
+      op->shard_direction();
+  const ::tt::target::ttnn::MeshShardType shardType = op->shard_type();
   const auto *fbShardShape = op->shard_shape();
   const auto *fbShardDims = op->shard_dims();
   std::vector<int64_t> shardShape(fbShardShape->begin(), fbShardShape->end());
   std::vector<int64_t> shardDims(fbShardDims->begin(), fbShardDims->end());
 
-  if (shardType == mesh_shard::MeshShardType::Identity) {
+  if (shardType == ::tt::target::ttnn::MeshShardType::Identity) {
     // Forward tensor in runtime for identity shard type assuming that the input
     // tensor is pre-sharded by frontend and output tensor is expected to be
     // pre-sharded by frontend. Thus, no sharding is required, but need to makes
@@ -32,15 +30,48 @@ void run(const ::tt::target::ttnn::MeshShardOp *op, ProgramContext &context) {
                          ::ttnn::StorageType::MULTI_DEVICE_HOST,
                  "Input of mesh_shard with identity shard_type must be MULTI "
                  "DEVICE or MULTI DEVICE HOST Storage.");
-  } else {
-    DEBUG_ASSERT(::tt::runtime::ttnn::utils::isOnHost(input.storage_type()),
-                 "Input of ttnn::mesh_shard should be host tensor for "
-                 "replicate and devices operations.");
+    tensorPool.insertTTNNTensorAndValidate(op->out(), input);
+    return;
   }
 
-  ::ttnn::Tensor out =
-      ::tt::runtime::ttnn::operations::ccl::mesh_shard::mesh_shard(
-          input, meshDevice, shardDirection, shardType, shardShape, shardDims);
+  DEBUG_ASSERT(::tt::runtime::ttnn::utils::isOnHost(input.storage_type()),
+               "Input of ttnn::mesh_shard should be host tensor for "
+               "replicate and devices operations.");
+
+  ::ttnn::Tensor out;
+  if (shardDirection ==
+      ::tt::target::ttnn::MeshShardDirection::FullToShardShape) {
+    auto convertToShard = [](int dim)
+        -> std::variant<::ttnn::distributed::MeshMapperConfig::Replicate,
+                        ::ttnn::distributed::MeshMapperConfig::Shard> {
+      if (dim >= 0) {
+        return ::ttnn::distributed::MeshMapperConfig::Shard{dim};
+      } else {
+        return ::ttnn::distributed::MeshMapperConfig::Replicate{};
+      }
+    };
+    ::ttnn::distributed::MeshMapperConfig meshMapperConfig;
+    for (auto dim : shardDims) {
+      meshMapperConfig.placements.push_back(convertToShard(dim));
+    }
+    auto mapper = ::ttnn::distributed::create_mesh_mapper(
+        meshDevice, meshMapperConfig,
+        shardType == ::tt::target::ttnn::MeshShardType::Replicate
+            ? ::ttnn::MeshShape(meshDevice.num_devices())
+            : meshDevice.shape());
+    out = ::ttnn::distributed::distribute_tensor(input, *mapper);
+  } else {
+    ::ttnn::distributed::MeshComposerConfig meshComposerConfig;
+    for (auto dim : shardDims) {
+      meshComposerConfig.dims.push_back(static_cast<int>(dim));
+    }
+    auto composer = ::ttnn::distributed::create_mesh_composer(
+        meshDevice, meshComposerConfig,
+        shardType == ::tt::target::ttnn::MeshShardType::Replicate
+            ? ::ttnn::MeshShape()
+            : meshDevice.shape());
+    out = ::ttnn::distributed::aggregate_tensor(input, *composer);
+  }
 
   tensorPool.insertTTNNTensorAndValidate(op->out(), out);
 }
