@@ -318,7 +318,7 @@ jobs:
       shell: bash
       run: |
         source env/activate
-        ttrt ${{ matrix.build.name }} ${{ matrix.build.ttrt_flags }} ${{ steps.strings.outputs.build-output-dir }}/python/golden/${{ matrix.build.path }}
+        ttrt ${{ matrix.build.name }} ${{ matrix.build.ttrt_flags }} ${{ steps.strings.outputs.build-output-dir }}/test/python/golden/${{ matrix.build.path }}
 
     - name: Collect and Upload Perf Reports
       if: matrix.build.name == 'perf'
