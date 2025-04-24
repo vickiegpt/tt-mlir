@@ -472,8 +472,8 @@ def test_neg_1x8_dim_1(in0: Operand, builder: TTIRBuilder):
         neg_output,
         shard_direction="#tt.shard_direction<shard_to_full>",
         shard_type="#tt.shard_type<devices>",
-        shard_shape=[1, 1, 1, 8],
-        shard_dims=[-1, 3],
+        shard_shape=[1, 8, 1, 1],
+        shard_dims=[-1, 1],
     )
 
 
