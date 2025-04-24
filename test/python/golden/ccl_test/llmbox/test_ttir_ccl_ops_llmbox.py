@@ -356,8 +356,8 @@ def test_neg_2x4_cluster_1(in0: Operand, builder: TTIRBuilder):
         neg_output,
         shard_direction="#tt.shard_direction<shard_to_full>",
         shard_type="#tt.shard_type<devices>",
-        shard_shape=[1, 2, 1, 1],
-        shard_dims=[1, -1],
+        shard_shape=[1, 1, 1, 4],
+        shard_dims=[1, 3],
     )
 
 
