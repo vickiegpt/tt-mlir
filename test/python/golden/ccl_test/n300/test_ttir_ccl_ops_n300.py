@@ -223,6 +223,35 @@ def test_matmul_1x2(in0: Operand, in1: Operand, builder: TTIRBuilder):
 
 @compile_to_flatbuffer(
     [
+        (1, 256, 64, 256),
+    ],
+    targets=["ttnn"],
+    mesh_shape=[1, 2],
+)
+def test_neg_1x2_dim_3(in0: Operand, builder: TTIRBuilder):
+    input = builder._get_golden_tensor(in0)
+    golden_output = torch.neg(input)
+    builder.set_graph_input_output([input], [golden_output])
+
+    sharded_in0 = builder.mesh_shard(
+        in0,
+        shard_direction="#tt.shard_direction<full_to_shard>",
+        shard_type="#tt.shard_type<devices>",
+        shard_shape=[1, 1, 1, 2],
+        shard_dims=[-1, 3],
+    )
+    neg_output = builder.neg(sharded_in0)
+    return builder.mesh_shard(
+        neg_output,
+        shard_direction="#tt.shard_direction<shard_to_full>",
+        shard_type="#tt.shard_type<devices>",
+        shard_shape=[1, 1, 1, 2],
+        shard_dims=[-1, 3],
+    )
+
+
+@compile_to_flatbuffer(
+    [
         (512, 1024),
         (512, 1024),
     ],
