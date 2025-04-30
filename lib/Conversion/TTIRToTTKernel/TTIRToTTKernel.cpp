@@ -106,16 +106,42 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
-    Operation *newOp;
+    Operation *newOp = nullptr;
+    Operation *newOpInitOp = nullptr;
 
     if (mlir::isa<ttir::TileMaximumOp>(op)) {
-      rewriter.create<ttkernel::MaxTilesInitOp>(op->getLoc());
+      newOpInitOp = rewriter.create<ttkernel::MaxTilesInitOp>(op->getLoc());
       newOp = rewriter.create<ttkernel::MaxTilesOp>(
           op->getLoc(), i32(rewriter, op->getLoc(), 0),
           i32(rewriter, op->getLoc(), 1));
+    } else if (mlir::isa<ttir::TileSinOp>(op)) {
+      newOpInitOp = rewriter.create<ttkernel::SinTilesInitOp>(op->getLoc());
+      newOp = rewriter.create<ttkernel::SinTilesOp>(
+          op->getLoc(), i32(rewriter, op->getLoc(), 0));
     } else if (mlir::isa<ttir::TileAddOp>(op)) {
+      assert(op->hasOneUse());
+      auto store = mlir::cast<memref::StoreOp>(*op->user_begin());
+      auto outCB = rewriter.getRemappedValue(store.getMemref());
+      rewriter.create<ttkernel::BinaryOpInitCommonOp>(
+          op->getLoc(), getCB(rewriter, operands[0]),
+          getCB(rewriter, operands[1]), outCB);
+      rewriter.create<ttkernel::AddTilesInitOp>(op->getLoc(),
+                                                getCB(rewriter, operands[0]),
+                                                getCB(rewriter, operands[1]));
       auto dstIdx = index(rewriter, op->getLoc(), 0);
       newOp = rewriter.create<ttkernel::AddTilesOp>(
+          op->getLoc(), getCB(rewriter, operands[0]),
+          getCB(rewriter, operands[1]), getLoadIndex(operands[0]),
+          getLoadIndex(operands[1]), dstIdx);
+    } else if (mlir::isa<ttir::TileSubOp>(op)) {
+      auto dstIdx = index(rewriter, op->getLoc(), 0);
+      newOp = rewriter.create<ttkernel::SubTilesOp>(
+          op->getLoc(), getCB(rewriter, operands[0]),
+          getCB(rewriter, operands[1]), getLoadIndex(operands[0]),
+          getLoadIndex(operands[1]), dstIdx);
+    } else if (mlir::isa<ttir::TileMulOp>(op)) {
+      auto dstIdx = index(rewriter, op->getLoc(), 0);
+      newOp = rewriter.create<ttkernel::MulTilesOp>(
           op->getLoc(), getCB(rewriter, operands[0]),
           getCB(rewriter, operands[1]), getLoadIndex(operands[0]),
           getLoadIndex(operands[1]), dstIdx);
@@ -149,7 +175,11 @@ public:
       return failure();
     }
 
-    rewriter.setInsertionPoint(newOp);
+    if (newOpInitOp != nullptr) {
+      rewriter.setInsertionPoint(newOpInitOp);
+    } else {
+      rewriter.setInsertionPoint(newOp);
+    }
     if (mlir::isa<ttkernel::MatmulTilesOp>(newOp)) {
       lowerLoadToCopyTile(operands[2].getDefiningOp<memref::LoadOp>(), false,
                           rewriter);

@@ -158,6 +158,27 @@ def TTKernel_AddTilesOp : TTKernel_FPUOp<"add_tiles"> {
     let arguments = (ins TTKernel_CB:$in0_cb, TTKernel_CB:$in1_cb, IndexLike:$in0_tile_index, IndexLike:$in1_tile_index, IndexLike:$dst_index);
 }
 
+def TTKernel_SubTilesInitOp : TTKernel_InitOp<"sub_tiles_init"> {
+    let summary = "Short init function";
+    let description = [{
+      Must be run before sub_tiles.
+    }];
+
+    let arguments = (ins TTKernel_CB:$in0_cb, TTKernel_CB:$in1_cb); // FIXME: , BOOL:$acc_to_dst);
+}
+
+def TTKernel_SubTilesOp : TTKernel_FPUOp<"sub_tiles"> {
+    let summary = "Sub operation";
+    let description = [{
+      Performs element-wise subtraction C=A-B of tiles in two CBs at given indices
+      and writes the result to the DST register at index dst_tile_index. The DST
+      register buffer must be in acquired state via *tile_regs_acquire* call. This call
+      is blocking and is only available on the compute engine.
+    }];
+
+    let arguments = (ins TTKernel_CB:$in0_cb, TTKernel_CB:$in1_cb, IndexLike:$in0_tile_index, IndexLike:$in1_tile_index, IndexLike:$dst_index);
+}
+
 def TTKernel_MulTilesInitOp : TTKernel_InitOp<"mul_tiles_init"> {
     let summary = "Short init function";
     let description = [{
@@ -295,6 +316,27 @@ def TTKernel_MaxTilesOp : TTKernel_SFPUOp<"max_tile"> {
     }];
 
     let arguments = (ins IndexLike:$dst0_index, IndexLike:$dst1_index);
+}
+
+def TTKernel_SinTilesInitOp : TTKernel_InitOp<"sin_tile_init"> {
+    let summary = "Short init function";
+    let description = [{
+      Must be run before sin_tile.
+    }];
+
+    let arguments = (ins);
+}
+
+def TTKernel_SinTilesOp : TTKernel_SFPUOp<"sin_tile"> {
+    let summary = "Sin operation";
+    let description = [{
+      Performs element-wise computation of sine operation
+      DST[dst0_index] <- sin(DST[dst0_index])
+      on DST register operands. The DST register buffer must be in
+      acquired state via *tile_regs_acquire* call.
+    }];
+
+    let arguments = (ins IndexLike:$dst0_index);
 }
 
 //===----------------------------------------------------------------------===//
