@@ -4,8 +4,8 @@
 
 #include "operations/conv/prepare_conv2d_weights.h"
 
-#include "tt/runtime/ttnn/operations/utils.h"
-#include "tt/runtime/ttnn/utils.h"
+#include "tt/runtime/detail/ttnn/operations/utils.h"
+#include "tt/runtime/detail/ttnn/utils.h"
 
 #include "ttnn/operations/conv/conv2d/prepare_conv2d_weights.hpp"
 

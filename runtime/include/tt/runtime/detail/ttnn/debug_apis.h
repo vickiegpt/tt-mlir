@@ -6,7 +6,7 @@
 #define TT_RUNTIME_TTNN_DEBUG_APIS_H
 
 #include "tt/runtime/detail/logger.h"
-#include "tt/runtime/detail/ttnn.h"
+#include "tt/runtime/detail/ttnn/ttnn.h"
 #include "ttmlir/Target/TTNN/Target.h"
 
 #if defined(TT_RUNTIME_DEBUG) && TT_RUNTIME_DEBUG == 1
@@ -54,10 +54,8 @@ inline std::string toString(const ::ttnn::DataType &dtype) {
 
 inline std::string toString(const ::ttnn::StorageType &storageType) {
   switch (storageType) {
-  case ::ttnn::StorageType::BORROWED:
-    return "BORROWED";
-  case ::ttnn::StorageType::OWNED:
-    return "OWNED";
+  case ::ttnn::StorageType::HOST:
+    return "HOST";
   case ::ttnn::StorageType::DEVICE:
     return "DEVICE";
   case ::ttnn::StorageType::MULTI_DEVICE_HOST:
