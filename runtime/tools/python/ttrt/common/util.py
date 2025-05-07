@@ -647,7 +647,7 @@ class Binary(Flatbuffer):
             self.fbb = ttrt.binary.load_binary_from_path(file_path)
         else:
             self.fbb = ttrt.binary.load_binary_from_capsule(capsule)
-        self.fbb_dict = ttrt.binary.as_dict(self.fbb)
+        self.fbb_dict = ttrt.binary.as_dict(self.fbb, logging=self.logging)
         self.version = self.fbb.version
         self.programs = []
 
