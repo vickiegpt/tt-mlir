@@ -270,6 +270,8 @@ PYBIND11_MODULE(_C, m) {
         "Get the debug string of the op");
   m.def("get_op_loc_info", &tt::runtime::getOpLocInfo,
         "Get the location info of the op");
+  m.def("get_op_metadata", &tt::runtime::getOpMetadata,
+        "Get the metadata of the op");
   m.def(
       "memcpy",
       [](std::uintptr_t dst, ::tt::runtime::Tensor src) {

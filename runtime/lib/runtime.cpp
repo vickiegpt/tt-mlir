@@ -704,6 +704,25 @@ std::string getOpLocInfo(OpContext opContextHandle) {
   throw std::runtime_error("runtime is not enabled");
 }
 
+std::string getOpMetadata(OpContext opContextHandle,
+                          CallbackContext programContextHandle,
+                          Device deviceHandle, int deviceID) {
+#ifdef TT_RUNTIME_ENABLE_TTNN
+  if (getCurrentRuntime() == DeviceRuntime::TTNN) {
+    return ::tt::runtime::ttnn::getOpMetadata(
+        opContextHandle, programContextHandle, deviceHandle, deviceID);
+  }
+#endif
+
+#ifdef TT_RUNTIME_ENABLE_TTMETAL
+  if (getCurrentRuntime() == DeviceRuntime::TTMetal) {
+    return ::tt::runtime::ttmetal::getOpMetadata(
+        opContextHandle, programContextHandle, deviceHandle, deviceID);
+  }
+#endif
+  throw std::runtime_error("runtime is not enabled");
+}
+
 Tensor getOpOutputTensor(OpContext opContextHandle,
                          CallbackContext programContextHandle) {
 #if defined(TT_RUNTIME_ENABLE_TTNN)

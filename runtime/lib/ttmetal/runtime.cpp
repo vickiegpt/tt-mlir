@@ -339,6 +339,14 @@ std::string getOpLocInfo(OpContext opContextHandle) {
   return "";
 }
 
+std::string getOpMetadata(OpContext opContextHandle,
+                          CallbackContext programContextHandle,
+                          Device deviceHandle, int deviceID) {
+  // Not implemented
+  LOG_WARNING("obtaining op metadata info for metal runtime not implemented");
+  return "";
+}
+
 Tensor getOpOutputTensor(OpContext opContextHandle,
                          CallbackContext programContextHandle) {
   // Not implemented

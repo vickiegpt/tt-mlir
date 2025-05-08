@@ -637,6 +637,84 @@ std::string getOpLocInfo(OpContext opContextHandle) {
   return std::string(opContext.loc_info()->c_str());
 }
 
+// Only to be run post op
+std::string getOpMetadata(OpContext opContextHandle,
+                          CallbackContext programContextHandle,
+                          Device deviceHandle, int deviceID) {
+  const auto &opContext =
+      opContextHandle.as<::tt::target::ttnn::Operation>(DeviceRuntime::TTNN);
+  ::ttnn::MeshDevice &ttnnMeshDevice =
+      deviceHandle.as<::ttnn::MeshDevice>(DeviceRuntime::TTNN);
+  std::cout << "yes" << std::endl;
+  LOG_ASSERT(ttnnMeshDevice.is_parent_mesh(),
+             "Mesh device must be a parent mesh");
+  // const auto &programContext =
+  //     programContextHandle.as<tt::runtime::ttnn::ProgramContext>(DeviceRuntime::TTNN);
+  std::string type = ::tt::target::ttnn::EnumNamesOpType()[static_cast<size_t>(
+      opContext.type_type())];
+  std::cout << "Debug info: " << opContext.debug_info()->c_str() << std::endl;
+  std::cout << "Loc info: " << opContext.loc_info()->c_str() << std::endl;
+  std::cout << "Type info: " << type << std::endl;
+  // if op has host duration time, add to map
+  // Maybe return dictionary? inputs? outputs? debug, loc, type, host duration
+  // time? see PR, I could borrow from explorer other ops that use
+  // inputs/outputs
+#if defined(TT_RUNTIME_ENABLE_PERF_TRACE)
+  for (::ttnn::IDevice *ttnnDevice : ttnnMeshDevice.get_devices()) {
+    ::tt::tt_metal::detail::DumpDeviceProfileResults(ttnnDevice);
+  }
+#endif
+  return std::string(opContext.debug_info()->c_str());
+  // what if I dump device profile results then figure out how to open
+}
+
+/*
+// Use meshDevice -> get worker cores somehow?
+
+std::string dumpDeviceOp(Binary executableHandle, std::uint32_t programIndex,
+Device deviceHandle, int deviceID) {
+  ::ttnn::MeshDevice &ttnnMeshDevice =
+      deviceHandle.as<::ttnn::MeshDevice>(DeviceRuntime::TTNN);
+  const ::tt::target::ttnn::TTNNBinary &fbb =
+      *utils::getBinary(executableHandle);
+  const ::tt::target::ttnn::Program *program =
+      fbb.programs()->Get(programIndex);
+  LOG_ASSERT(ttnnMeshDevice.is_parent_mesh(),
+             "Mesh device must be a parent mesh");
+
+#if defined(TT_RUNTIME_ENABLE_PERF_TRACE)
+
+  std::vector<CoreCoord> worker_cores_in_program;
+  std::vector<CoreCoord> eth_cores_in_program;
+
+  std::vector<std::vector<CoreCoord>> logical_cores = program.logical_cores();
+  const auto& hal = ::tt::tt_metal::MetalContext::instance().hal();
+  for (uint32_t index = 0; index < hal.get_programmable_core_type_count();
+index++) { if (hal.get_core_type(index) == CoreType::WORKER) {
+          worker_cores_in_program =
+device->worker_cores_from_logical_cores(logical_cores[index]);
+      }
+      if (hal.get_core_type(index) == CoreType::ETH) {
+          eth_cores_in_program =
+device->ethernet_cores_from_logical_cores(logical_cores[index]);
+      }
+  }
+
+  std::vector<CoreCoord> cores_in_program;
+  cores_in_program.reserve(worker_cores_in_program.size() +
+eth_cores_in_program.size()); std::copy(worker_cores_in_program.begin(),
+worker_cores_in_program.end(), std::back_inserter(cores_in_program));
+  std::copy(eth_cores_in_program.begin(), eth_cores_in_program.end(),
+std::back_inserter(cores_in_program));
+
+  for (::ttnn::IDevice *ttnnDevice : ttnnMeshDevice.get_devices()) {
+    ::tt::tt_metal::detail::peekDeviceData(ttnnDevice);
+  }
+#endif
+  return std::string(opContext.debug_info()->c_str());
+  // what if I dump device profile results then figure out how to open
+}
+*/
 ::tt::runtime::Tensor getOpOutputTensor(OpContext opContextHandle,
                                         CallbackContext programContextHandle) {
   const auto &programContext =

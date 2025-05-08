@@ -37,6 +37,7 @@ try:
         get_layout,
         get_op_output_tensor,
         get_op_debug_str,
+        get_op_metadata,
         memcpy,
         deallocate_tensor,
         WorkaroundEnv,

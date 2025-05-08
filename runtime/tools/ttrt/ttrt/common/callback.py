@@ -6,6 +6,9 @@ import re
 from functools import partial
 import csv
 import json
+import subprocess
+import sys
+
 
 from ttrt.common.util import *
 
@@ -262,6 +265,48 @@ def memory(callback_runtime_config, binary, program_context, op_context):
     ] = op_memory_report
 
 
+def temp_get_all_metadata(callback_runtime_config, binary, program_context, op_context):
+    import ttrt.runtime
+
+    device = callback_runtime_config.device
+    device_id = 0
+    meta = ttrt.runtime.get_op_metadata(op_context, program_context, device, device_id)
+
+    log = Logger(callback_runtime_config.logging)
+    tracy_ops_data_file_path = "tracy_ops_data.csv"
+
+    sys.path.append(f"{get_ttrt_metal_home_path()}")
+    sys.path.append(f"{get_ttrt_metal_home_path()}/ttnn")
+    # Skipping port stuff and env_vars and signal_handler
+
+    globals = Globals(log)
+    tracy_csvexport_tool_path = f"{globals.get_ttmetal_home_path()}/csvexport-release"
+    with open(tracy_ops_data_file_path, "w") as csv_file:
+        subprocess.run(
+            f'{tracy_csvexport_tool_path} -m -s ";" {"tracy_profile_log_host.tracy"}',
+            shell=True,
+            check=True,
+            stdout=csv_file,
+            stderr=subprocess.DEVNULL,
+        )
+    results = {}
+    with open(tracy_ops_data_file_path, "r") as csv_file:
+        reader = csv.reader(csv_file)
+        counter = 0
+        for row in reader:
+            results[counter] = row
+            counter += 1
+
+
+def temp_get_op_metadata(callback_runtime_config, binary, program_context, op_context):
+    data = temp_get_all_metadata(
+        callback_runtime_config, binary, program_context, op_context
+    )
+    print(data)
+
+    # fix how you get filenames
+
+
 """
 -----------------------DEBUGGER CALLBACK-----------------------
 """
@@ -288,7 +333,7 @@ def pre_op_get_callback_fn(callback_runtime_config):
 
 
 def post_op_callback(callback_runtime_config, binary, program_context, op_context):
-
+    temp_get_op_metadata(callback_runtime_config, binary, program_context, op_context)
     if callback_runtime_config.enable_golden:
         golden(callback_runtime_config, binary, program_context, op_context)
 
