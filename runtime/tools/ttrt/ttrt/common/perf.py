@@ -480,11 +480,6 @@ class Perf:
                             stdout=csv_file,
                             stderr=subprocess.DEVNULL,
                         )
-                    with open(tracy_ops_data_file_path, "r") as csv_file:
-                        reader = csv.reader(csv_file)
-                        print(reader)
-                        for row in reader:
-                            print(row)
 
                     self.logging.info(
                         f"host side ops data report generated at {tracy_ops_data_file_path}"
@@ -553,21 +548,6 @@ class Perf:
                         perf_folder_path,
                         profiler_csv_file_path,
                     )
-
-                    with open(tracy_ops_data_file_path, "r+") as csv_file:
-                        # Not sure what that does:
-                        print("CSV: ", csv_file)
-                        subprocess.run(
-                            f'{self.tracy_csvexport_tool_path} -m -s ";" {"tracy_profile_log_host.tracy"}',
-                            shell=True,
-                            check=True,
-                            stdout=csv_file,
-                            stderr=subprocess.DEVNULL,
-                        )
-                    reader = csv.reader(csv_file)
-                    print(reader)
-                    for row in reader:
-                        print(row)
 
                     # post-process test results
                     test_result = []

@@ -279,6 +279,10 @@ def temp_get_all_metadata(callback_runtime_config, binary, program_context, op_c
     sys.path.append(f"{get_ttrt_metal_home_path()}/ttnn")
     # Skipping port stuff and env_vars and signal_handler
 
+    from tt_metal.tools.profiler.process_ops_logs import process_ops
+
+    process_ops(None, None, False)
+
     globals = Globals(log)
     tracy_csvexport_tool_path = f"{globals.get_ttmetal_home_path()}/csvexport-release"
     with open(tracy_ops_data_file_path, "w") as csv_file:
