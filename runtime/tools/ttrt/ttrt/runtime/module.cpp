@@ -269,7 +269,8 @@ PYBIND11_MODULE(_C, m) {
   m.def("get_op_debug_str", &tt::runtime::getOpDebugString,
         "Get the debug string of the op");
   m.def("get_op_loc_info", &tt::runtime::getOpLocInfo,
-        "Get the location info of the op");
+        "Get the location information for an operation");
+  m.def("dump_device", &tt::runtime::dumpDevice, "Dump device profile results");
   m.def(
       "memcpy",
       [](std::uintptr_t dst, ::tt::runtime::Tensor src) {

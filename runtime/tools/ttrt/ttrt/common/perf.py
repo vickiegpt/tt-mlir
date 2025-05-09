@@ -135,6 +135,7 @@ class Perf:
         )
 
     def __init__(self, args={}, logger=None, artifacts=None):
+        print("opened init: ", args)
         for name, attributes in Perf.registered_args.items():
             if type(args) == dict:
                 if name in args.keys():
@@ -149,6 +150,7 @@ class Perf:
                     converted_name = converted_name.replace("-", "_")
                 self[name] = getattr(args, converted_name)
 
+        print("bin type: ", type(self["binary"]))
         self.logger = logger if logger != None else Logger(self["--log-file"])
         self.logging = self.logger.get_logger()
         self.globals = Globals(self.logger)
@@ -177,6 +179,14 @@ class Perf:
         )
         self.tracy_capture_tool_process = None
         self.results = Results(self.logger, self.file_manager)
+        self.profiler_logs_dir = (
+            f"{self.globals.get_ttmetal_home_path()}/generated/profiler/.logs"
+        )
+        self.tracy_file_path = "tracy_profile_log_host.tracy"
+        self.tracy_ops_times_file_path = "tracy_ops_times.csv"
+        self.tracy_ops_data_file_path = "tracy_ops_data.csv"
+        self.profiler_device_side_log_path = f"{self.globals.get_ttmetal_home_path()}/generated/profiler/.logs/profile_log_device.csv"
+        self.profiler_csv_file_path = f"{self.globals.get_ttmetal_home_path()}/generated/profiler/reports/ops_perf_results.csv"
 
     def preprocess(self):
         self.logging.debug(f"------preprocessing perf API")
@@ -190,6 +200,7 @@ class Perf:
         self.logging.debug(f"------finished preprocessing perf API")
 
     def check_constraints(self):
+        print("opened check: ", self["binary"])
         self.logging.debug(f"------checking constraints for perf API")
 
         assert self.file_manager.check_file_exists(
@@ -222,6 +233,7 @@ class Perf:
                     return
             self.ttnn_binaries.append(bin)
         else:
+            print("ELSE")
             ttnn_binary_paths = self.file_manager.find_ttnn_binary_paths(self["binary"])
             ttmetal_binary_paths = self.file_manager.find_ttmetal_binary_paths(
                 self["binary"]
@@ -248,7 +260,7 @@ class Perf:
                     )
                     self.results.add_result(test_result)
                     continue
-
+                print("EVERYWHERE")
                 try:
                     bin.check_system_desc(self.query)
                 except Exception as e:
@@ -265,7 +277,7 @@ class Perf:
                     )
                     self.results.add_result(test_result)
                     continue
-
+                print("THERE")
                 if self["--program-index"] != "all":
                     if not bin.check_program_index_exists(int(self["--program-index"])):
                         message = f"program index={int(self['--program-index'])} is greater than number of programs in: {bin.file_path} - skipping this test"
@@ -283,7 +295,7 @@ class Perf:
                         )
                         self.results.add_result(test_result)
                         continue
-
+                print("HERE")
                 self.ttnn_binaries.append(bin)
 
             self.logging.debug(f"finished checking constraints for run API")
@@ -346,20 +358,127 @@ class Perf:
 
         self.logging.debug(f"------finished checking constraints for perf API")
 
+    def get_available_port(self):
+        ip = socket.gethostbyname(socket.gethostname())
+
+        for port in range(8086, 8500):
+            try:
+                serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                serv.bind((ip, port))
+                return str(port)
+            except PermissionError as e:
+                pass
+            except OSError as e:
+                pass
+        return None
+
+    def signal_handler(self, sig, frame, testProcess):
+        os.killpg(os.getpgid(testProcess.pid), signal.SIGTERM)
+        self.tracy_capture_tool_process.terminate()
+        self.tracy_capture_tool_process.communicate()
+        sys.exit(3)
+
+    def set_tracy_data_capture(self, bin):
+        print("opened set")
+        port = self.get_available_port() if self["--port"] == 0 else self["--port"]
+
+        if not port:
+            raise Exception("No available port found")
+        self.logging.debug(f"selected port={port}")
+
+        env_vars = dict(os.environ)
+        env_vars["TRACY_PORT"] = port
+
+        if not self["--host-only"]:
+            env_vars["TT_METAL_CLEAR_L1"] = "1"
+            env_vars["TT_METAL_DEVICE_PROFILER"] = "1"
+            env_vars["TT_METAL_DEVICE_PROFILER_DISPATCH"] = "0"
+
+        tracy_capture_tool_command = (
+            f"{self.tracy_capture_tool_path} -o {self.tracy_file_path} -f -p {port}"
+        )
+        self.tracy_capture_tool_process = subprocess.Popen(
+            tracy_capture_tool_command, shell=True
+        )
+
+        command_options = f"--program-index {self['--program-index']} --loops {self['--loops']} --save-artifacts "
+
+        if self["--memory"]:
+            command_options += " --memory "
+
+        if self["--disable-eth-dispatch"]:
+            command_options += " --disable-eth-dispatch "
+
+        if self["--disable-golden"]:
+            command_options += " --disable-golden "
+
+        if self["--enable-program-cache"]:
+            command_options += " --enable-program-cache "
+
+        if self["--emitc"]:
+            command_options += " --emitc "
+
+        ttrt_executable_path = shutil.which("ttrt")
+        test_command = f"{ttrt_executable_path} run {bin.file_path} {command_options}"
+        self.logging.info(f"test command for binary={bin.file_path} is: {test_command}")
+        testProcess = subprocess.Popen(
+            [test_command], shell=True, env=env_vars, preexec_fn=os.setsid
+        )
+
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+        testProcess.communicate()
+
+        try:
+            self.tracy_capture_tool_process.communicate(timeout=15)
+        except subprocess.TimeoutExpired as e:
+            self.tracy_capture_tool_process.terminate()
+            self.tracy_capture_tool_process.communicate()
+            raise Exception(
+                f"No profiling data could be captured. Please make sure you are on the correct build"
+            )
+
+    def write_tracy_ops_times(self):
+        with open(self.tracy_ops_times_file_path, "w") as csv_file:
+            child_calls = ["CompileProgram", "HWCommandQueue_write_buffer"]
+            child_calls_str = f"-x {','.join(child_calls)}"
+            subprocess.run(
+                f"{self.tracy_csvexport_tool_path} -u -p TT_DNN {child_calls_str} {self.tracy_file_path}",
+                shell=True,
+                check=True,
+                stdout=csv_file,
+                stderr=subprocess.DEVNULL,
+            )
+
+        self.logging.info(
+            f"host side ops time report generated at {self.tracy_ops_times_file_path}"
+        )
+
+    def write_tracy_ops_data(self):
+        print("opened write")
+        with open(self.tracy_ops_data_file_path, "w") as csv_file:
+            subprocess.run(
+                f'{self.tracy_csvexport_tool_path} -m -s ";" {self.tracy_file_path}',
+                shell=True,
+                check=True,
+                stdout=csv_file,
+                stderr=subprocess.DEVNULL,
+            )
+        results = {}
+        with open(self.tracy_ops_data_file_path, "r") as csv_file:
+            reader = csv.reader(csv_file)
+            counter = 0
+            for row in reader:
+                results[counter] = row
+                counter += 1
+        print(results)
+
+        self.logging.info(
+            f"host side ops data report generated at {self.tracy_ops_data_file_path}"
+        )
+
     def execute(self):
         self.logging.debug(f"------executing perf API")
-
-        profiler_logs_dir = (
-            f"{self.globals.get_ttmetal_home_path()}/generated/profiler/.logs"
-        )
-        tracy_file_path = "tracy_profile_log_host.tracy"
-        tracy_ops_times_file_path = "tracy_ops_times.csv"
-        tracy_ops_data_file_path = "tracy_ops_data.csv"
-        profiler_device_side_log_path = f"{self.globals.get_ttmetal_home_path()}/generated/profiler/.logs/profile_log_device.csv"
-        profiler_csv_file_path = f"{self.globals.get_ttmetal_home_path()}/generated/profiler/reports/ops_perf_results.csv"
-
-        self.file_manager.remove_directory(profiler_logs_dir)
-        self.file_manager.create_directory(profiler_logs_dir)
 
         def _execute(binaries):
             # need to temporary add these sys paths so TTRT whls can find the `process_ops` function
@@ -367,21 +486,10 @@ class Perf:
             sys.path.append(f"{get_ttrt_metal_home_path()}")
             sys.path.append(f"{get_ttrt_metal_home_path()}/ttnn")
 
+            self.file_manager.remove_directory(self.profiler_logs_dir)
+            self.file_manager.create_directory(self.profiler_logs_dir)
+
             from tt_metal.tools.profiler.process_ops_logs import process_ops
-
-            def get_available_port():
-                ip = socket.gethostbyname(socket.gethostname())
-
-                for port in range(8086, 8500):
-                    try:
-                        serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        serv.bind((ip, port))
-                        return str(port)
-                    except PermissionError as e:
-                        pass
-                    except OSError as e:
-                        pass
-                return None
 
             if len(binaries) == 0:
                 self.logging.warning(f"no binaries found to run - returning early")
@@ -389,137 +497,47 @@ class Perf:
 
             for bin in binaries:
                 try:
-                    port = (
-                        get_available_port() if self["--port"] == 0 else self["--port"]
-                    )
-
-                    if not port:
-                        raise Exception("No available port found")
-                    self.logging.debug(f"selected port={port}")
-
-                    env_vars = dict(os.environ)
-                    env_vars["TRACY_PORT"] = port
-
-                    if not self["--host-only"]:
-                        env_vars["TT_METAL_CLEAR_L1"] = "1"
-                        env_vars["TT_METAL_DEVICE_PROFILER"] = "1"
-                        env_vars["TT_METAL_DEVICE_PROFILER_DISPATCH"] = "0"
-
-                    tracy_capture_tool_command = f"{self.tracy_capture_tool_path} -o {tracy_file_path} -f -p {port}"
-                    self.tracy_capture_tool_process = subprocess.Popen(
-                        tracy_capture_tool_command, shell=True
-                    )
-
-                    command_options = f"--program-index {self['--program-index']} --loops {self['--loops']} --save-artifacts "
-
-                    if self["--memory"]:
-                        command_options += " --memory "
-
-                    if self["--disable-eth-dispatch"]:
-                        command_options += " --disable-eth-dispatch "
-
-                    if self["--disable-golden"]:
-                        command_options += " --disable-golden "
-
-                    if self["--enable-program-cache"]:
-                        command_options += " --enable-program-cache "
-
-                    if self["--emitc"]:
-                        command_options += " --emitc "
-
-                    ttrt_executable_path = shutil.which("ttrt")
-                    test_command = (
-                        f"{ttrt_executable_path} run {bin.file_path} {command_options}"
-                    )
-                    self.logging.info(
-                        f"test command for binary={bin.file_path} is: {test_command}"
-                    )
-                    testProcess = subprocess.Popen(
-                        [test_command], shell=True, env=env_vars, preexec_fn=os.setsid
-                    )
-
-                    def signal_handler(sig, frame):
-                        os.killpg(os.getpgid(testProcess.pid), signal.SIGTERM)
-                        self.tracy_capture_tool_process.terminate()
-                        self.tracy_capture_tool_process.communicate()
-                        sys.exit(3)
-
-                    signal.signal(signal.SIGINT, signal_handler)
-                    signal.signal(signal.SIGTERM, signal_handler)
-                    testProcess.communicate()
-
-                    try:
-                        self.tracy_capture_tool_process.communicate(timeout=15)
-                    except subprocess.TimeoutExpired as e:
-                        self.tracy_capture_tool_process.terminate()
-                        self.tracy_capture_tool_process.communicate()
-                        raise Exception(
-                            f"No profiling data could be captured. Please make sure you are on the correct build"
-                        )
-
-                    with open(tracy_ops_times_file_path, "w") as csv_file:
-                        child_calls = ["CompileProgram", "HWCommandQueue_write_buffer"]
-                        child_calls_str = f"-x {','.join(child_calls)}"
-                        subprocess.run(
-                            f"{self.tracy_csvexport_tool_path} -u -p TT_DNN {child_calls_str} {tracy_file_path}",
-                            shell=True,
-                            check=True,
-                            stdout=csv_file,
-                            stderr=subprocess.DEVNULL,
-                        )
-
-                    self.logging.info(
-                        f"host side ops time report generated at {tracy_ops_times_file_path}"
-                    )
-
-                    with open(tracy_ops_data_file_path, "w") as csv_file:
-                        subprocess.run(
-                            f'{self.tracy_csvexport_tool_path} -m -s ";" {tracy_file_path}',
-                            shell=True,
-                            check=True,
-                            stdout=csv_file,
-                            stderr=subprocess.DEVNULL,
-                        )
-
-                    self.logging.info(
-                        f"host side ops data report generated at {tracy_ops_data_file_path}"
-                    )
+                    self.set_tracy_data_capture(bin)
+                    self.write_tracy_ops_times()
+                    self.write_tracy_ops_data()
 
                     # copy all relevant files to correct folder directory (metal hardcoded path, need to make more dynamic from metal library)
-                    self.file_manager.copy_file(profiler_logs_dir, tracy_file_path)
                     self.file_manager.copy_file(
-                        profiler_logs_dir, tracy_ops_times_file_path
+                        self.profiler_logs_dir, self.tracy_file_path
                     )
                     self.file_manager.copy_file(
-                        profiler_logs_dir, tracy_ops_data_file_path
+                        self.profiler_logs_dir, self.tracy_ops_times_file_path
+                    )
+                    self.file_manager.copy_file(
+                        self.profiler_logs_dir, self.tracy_ops_data_file_path
                     )
 
                     # copy all relevant files into perf folder for this test
                     perf_folder_path = self.artifacts.get_binary_perf_folder_path(bin)
                     self.artifacts.save_binary(bin, self.query)
-                    self.file_manager.copy_file(perf_folder_path, tracy_file_path)
+                    self.file_manager.copy_file(perf_folder_path, self.tracy_file_path)
                     self.file_manager.copy_file(
-                        perf_folder_path, tracy_ops_times_file_path
+                        perf_folder_path, self.tracy_ops_times_file_path
                     )
                     self.file_manager.copy_file(
-                        perf_folder_path, tracy_ops_data_file_path
+                        perf_folder_path, self.tracy_ops_data_file_path
                     )
 
                     if not self["--host-only"]:
                         self.file_manager.copy_file(
-                            perf_folder_path, profiler_device_side_log_path
+                            perf_folder_path, self.profiler_device_side_log_path
                         )
 
                     process_ops(None, None, False)
 
                     # Add post-processing steps to insert location data into the ops_perf data file
-                    with open(profiler_csv_file_path, "r") as perf_file:
+                    with open(self.profiler_csv_file_path, "r") as perf_file:
                         perf_reader = csv.DictReader(perf_file)
                         headers = list(perf_reader.fieldnames) + ["LOC"]
                         perf_data = list(perf_reader)
 
-                    with open(profiler_csv_file_path, "w+") as perf_file, open(
-                        tracy_ops_data_file_path, "r"
+                    with open(self.profiler_csv_file_path, "w+") as perf_file, open(
+                        self.tracy_ops_data_file_path, "r"
                     ) as message_file:
                         import re
 
@@ -546,7 +564,7 @@ class Perf:
 
                     self.file_manager.copy_file(
                         perf_folder_path,
-                        profiler_csv_file_path,
+                        self.profiler_csv_file_path,
                     )
 
                     # post-process test results

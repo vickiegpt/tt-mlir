@@ -176,6 +176,8 @@ std::string getOpDebugString(OpContext opContextHandle);
 
 std::string getOpLocInfo(OpContext opContextHandle);
 
+std::string dumpDevice(Device deviceHandle, int deviceID);
+
 Tensor getOpOutputTensor(OpContext opContextHandle,
                          CallbackContext programContextHandle);
 

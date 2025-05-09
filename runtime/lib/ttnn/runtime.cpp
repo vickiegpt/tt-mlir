@@ -638,6 +638,22 @@ std::string getOpLocInfo(OpContext opContextHandle) {
   return std::string(opContext.loc_info()->c_str());
 }
 
+// Only to be run post op
+std::string dumpDevice(Device deviceHandle, int deviceID) {
+  ::ttnn::MeshDevice &ttnnMeshDevice =
+      deviceHandle.as<::ttnn::MeshDevice>(DeviceRuntime::TTNN);
+  LOG_ASSERT(ttnnMeshDevice.is_parent_mesh(),
+             "Mesh device must be a parent mesh");
+
+#if defined(TT_RUNTIME_ENABLE_PERF_TRACE)
+  for (::ttnn::IDevice *ttnnDevice : ttnnMeshDevice.get_devices()) {
+    ::tt::tt_metal::detail::DumpDeviceProfileResults(ttnnDevice);
+  }
+#endif
+  return " ";
+  // what if I dump device profile results then figure out how to open
+}
+
 ::tt::runtime::Tensor getOpOutputTensor(OpContext opContextHandle,
                                         CallbackContext programContextHandle) {
   const auto &programContext =

@@ -489,7 +489,7 @@ class Run:
             for bin in binaries:
                 try:
                     self.logging.info(f"evaluating binary={bin.file_path}")
-
+                    print("runtime bin : ", bin.file_path)
                     pre_op_callback_runtime_config = CallbackRuntimeConfig(
                         device,
                         "",
@@ -501,6 +501,7 @@ class Run:
                         not self["--disable-golden"],
                         self["--memory"],
                         self["--debugger"],
+                        bin.file_path,
                     )
                     post_op_callback_runtime_config = CallbackRuntimeConfig(
                         device,
@@ -513,6 +514,7 @@ class Run:
                         not self["--disable-golden"],
                         self["--memory"],
                         self["--debugger"],
+                        bin.file_path,
                     )
 
                     callback_env = ttrt.runtime.DebugHooks.get(

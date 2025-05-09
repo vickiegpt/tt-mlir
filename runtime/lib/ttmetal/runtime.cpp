@@ -339,6 +339,12 @@ std::string getOpLocInfo(OpContext opContextHandle) {
   return "";
 }
 
+std::string dumpDevice(Device deviceHandle, int deviceID) {
+  // Not implemented
+  LOG_WARNING("dumping device for metal runtime not implemented");
+  return "";
+}
+
 Tensor getOpOutputTensor(OpContext opContextHandle,
                          CallbackContext programContextHandle) {
   // Not implemented
