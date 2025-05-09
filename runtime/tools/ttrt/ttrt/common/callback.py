@@ -27,7 +27,7 @@ class CallbackRuntimeConfig:
         enable_golden=False,
         enable_memory=False,
         enable_debugger=False,
-        binary_path="",
+        bin=None,
         golden_report={},
         memory_report={},
     ):
@@ -41,10 +41,13 @@ class CallbackRuntimeConfig:
         self.enable_golden = enable_golden
         self.enable_memory = enable_memory
         self.enable_debugger = enable_debugger
-        self.binary_path = binary_path
+        self.bin = bin
         self.golden_report = golden_report
         self.memory_report = memory_report
         self.counter = -1
+        # logger = Logger()
+        # file_manager = FileManager(logger)
+        # self.bin = Binary(logger, file_manager, "")
 
     def start_new_callback(self, artifact_dir):
         self.artifact_dir = artifact_dir
@@ -126,6 +129,7 @@ def golden(callback_runtime_config, binary, program_context, op_context):
     logging.debug("executing golden comparison")
 
     loc = ttrt.runtime.get_op_loc_info(op_context)
+    print("Loc: ", loc)
 
     op_golden_tensor = binary.get_debug_info_golden(loc)
 
@@ -276,25 +280,27 @@ def temp_get_all_metadata(callback_runtime_config, binary, program_context, op_c
     meta = ttrt.runtime.dump_device(device, device_id)
     print("got here")
 
-    # logger = Logger()
+    # logger = Logger("ttrt.log")
     # file_manager = FileManager(logger)
+    # bin = Binary(logger, file_manager, "")
     # binary_path = file_manager.find_ttnn_binary_paths(binary.file_identifier)
-    print("callback paths: ", callback_runtime_config.binary_path)
+    print("callback paths: ", callback_runtime_config.bin.file_path)
     # perf = Perf({"binary": callback_runtime_config.binary}) #add other args later?
     perf = Perf(
-        args={"binary": callback_runtime_config.binary_path}
+        args={"binary": callback_runtime_config.bin.file_path}
     )  # add other args later?
     # maybe preprocess?
 
     sys.path.append(f"{get_ttrt_metal_home_path()}")
     sys.path.append(f"{get_ttrt_metal_home_path()}/ttnn")
-    perf.check_constraints()
+    # if callback_runtime_config.counter
+    # perf.check_constraints()
 
     print("binaries ", perf.ttnn_binaries)
     # for bin in perf.ttnn_binaries:
-    for bin in [callback_runtime_config.binary_path]:
-        perf.set_tracy_data_capture(bin)
-        perf.write_tracy_ops_data()
+    # for bin in [callback_runtime_config.binary_path]:
+    perf.set_tracy_data_capture(callback_runtime_config.bin)
+    perf.write_tracy_ops_data()
 
     """
     with open(tracy_ops_data_file_path, "r") as csv_file:
@@ -341,6 +347,9 @@ def pre_op_get_callback_fn(callback_runtime_config):
 
 
 def post_op_callback(callback_runtime_config, binary, program_context, op_context):
+    import ttrt.runtime
+
+    # print("Lord... ", ttrt.runtime.get_current_system_desc(ttrt.runtime.DispatchCoreType.ETH))
     temp_get_op_metadata(callback_runtime_config, binary, program_context, op_context)
     if callback_runtime_config.enable_golden:
         golden(callback_runtime_config, binary, program_context, op_context)

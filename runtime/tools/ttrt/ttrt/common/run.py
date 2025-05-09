@@ -501,7 +501,7 @@ class Run:
                         not self["--disable-golden"],
                         self["--memory"],
                         self["--debugger"],
-                        bin.file_path,
+                        bin,
                     )
                     post_op_callback_runtime_config = CallbackRuntimeConfig(
                         device,
@@ -514,7 +514,7 @@ class Run:
                         not self["--disable-golden"],
                         self["--memory"],
                         self["--debugger"],
-                        bin.file_path,
+                        bin,
                     )
 
                     callback_env = ttrt.runtime.DebugHooks.get(

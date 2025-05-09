@@ -644,12 +644,14 @@ class Binary(Flatbuffer):
         import ttrt.binary
 
         if not capsule:
+            print("Loading binary from path: ", file_path)
             self.fbb = ttrt.binary.load_binary_from_path(file_path)
         else:
             self.fbb = ttrt.binary.load_binary_from_capsule(capsule)
         self.fbb_dict = ttrt.binary.as_dict(self.fbb)
         self.version = self.fbb.version
         self.programs = []
+        print("Creating Binary: ", self.fbb, self.fbb_dict, self.version)
 
         for i in range(len(self.fbb_dict["programs"])):
             program = Binary.Program(i, self.fbb_dict["programs"][i])
