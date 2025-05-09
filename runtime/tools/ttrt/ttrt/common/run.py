@@ -489,7 +489,7 @@ class Run:
             for bin in binaries:
                 try:
                     self.logging.info(f"evaluating binary={bin.file_path}")
-                    print("runtime bin : ", bin.file_path)
+
                     pre_op_callback_runtime_config = CallbackRuntimeConfig(
                         device,
                         "",

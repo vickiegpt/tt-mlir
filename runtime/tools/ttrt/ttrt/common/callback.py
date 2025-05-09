@@ -278,29 +278,19 @@ def temp_get_all_metadata(callback_runtime_config, binary, program_context, op_c
     device = callback_runtime_config.device
     device_id = 0
     meta = ttrt.runtime.dump_device(device, device_id)
-    print("got here")
 
-    # logger = Logger("ttrt.log")
-    # file_manager = FileManager(logger)
-    # bin = Binary(logger, file_manager, "")
-    # binary_path = file_manager.find_ttnn_binary_paths(binary.file_identifier)
     print("callback paths: ", callback_runtime_config.bin.file_path)
-    # perf = Perf({"binary": callback_runtime_config.binary}) #add other args later?
-    perf = Perf(
-        args={"binary": callback_runtime_config.bin.file_path}
-    )  # add other args later?
-    # maybe preprocess?
+    perf = Perf(args={"binary": callback_runtime_config.bin.file_path})
 
     sys.path.append(f"{get_ttrt_metal_home_path()}")
     sys.path.append(f"{get_ttrt_metal_home_path()}/ttnn")
-    # if callback_runtime_config.counter
     # perf.check_constraints()
-
+    # process_ops(None, None, False) ?
     print("binaries ", perf.ttnn_binaries)
     # for bin in perf.ttnn_binaries:
     # for bin in [callback_runtime_config.binary_path]:
-    perf.set_tracy_data_capture(callback_runtime_config.bin)
-    perf.write_tracy_ops_data()
+    # perf.set_tracy_data_capture(callback_runtime_config.bin)
+    # perf.write_tracy_ops_data()
 
     """
     with open(tracy_ops_data_file_path, "r") as csv_file:
