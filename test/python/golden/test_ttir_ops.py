@@ -891,6 +891,23 @@ def test_empty(shape: Shape, request):
     )
 
 
+@pytest.mark.parametrize("shape", [(2, 2)], ids=["128x128"])
+@pytest.mark.parametrize("value", [[0, 1]])  # , [2, 3]]])
+def test_constant(shape: Shape, value, request):
+    def constant(out: Operand, builder: TTIRBuilder, unit_attrs: List[str] = None):
+        return builder.constant(
+            out, value=DenseI32ArrayAttr.get(value), unit_attrs=unit_attrs
+        )
+
+    compile_to_flatbuffer(
+        constant,
+        inputs_shapes=[shape],
+        test_base=request.node.name,
+        output_root=request.config.getoption("--path"),
+        system_desc_path=request.config.getoption("--sys-desc"),
+    )
+
+
 @pytest.mark.run_error
 @pytest.mark.parametrize("shapes", [[(128, 128)]])
 @pytest.mark.parametrize("dim", [0, 1])

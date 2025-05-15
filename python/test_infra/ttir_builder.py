@@ -552,6 +552,8 @@ class TTIRBuilder:
             ):
                 golden_output = op_golden_function(**golden_kwargs)
             else:
+                print(organize_golden_args(inputs))
+                print(golden_kwargs)
                 golden_output = op_golden_function(
                     *(organize_golden_args(inputs)),
                     **golden_kwargs,
@@ -586,6 +588,8 @@ class TTIRBuilder:
             ):
                 op = op_ttir_function(loc=loc, **ttir_kwargs)
             else:
+                print(organize_ttir_args(inputs, output, output_shape))
+                print(ttir_kwargs)
                 op = op_ttir_function(
                     *organize_ttir_args(inputs, output, output_shape),
                     loc=loc,
@@ -1695,6 +1699,33 @@ class TTIRBuilder:
             golden_kwargs={"size": shape},
             ttir_kwargs={"result": output, "shape": shape},
             organize_ttir_args=lambda i, o, shape: 0,
+            unit_attrs=unit_attrs,
+        )
+
+    def constant(
+        self,
+        out: Operand,
+        value: List[Union[int, float]],
+        data_type: Optional[Type] = None,
+        unit_attrs: dict = None,
+    ) -> OpView:
+        val = torch.tensor(value)
+        out_tensor = self._get_golden_tensor(out)
+        dims = (out_tensor.dim(),)
+        print(dims)
+
+        dtype = data_type if data_type is not None else self._default_dtype
+        return self.op_proxy(
+            torch.tile,
+            ttir.ConstantOp,
+            [out],
+            golden_kwargs={"input": val, "dims": dims},
+            ttir_kwargs={"value": value},
+            organize_ttir_args=lambda i, o, shape: (
+                self._get_type(o),
+            ),  # (i[0],), #(self._get_type(o), i[0], o),
+            organize_golden_args=lambda i: 0,
+            output_type=dtype,
             unit_attrs=unit_attrs,
         )
 
