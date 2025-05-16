@@ -463,9 +463,10 @@ void dumpDeviceProfileResults(Device deviceHandle) {
 #if defined(TT_RUNTIME_ENABLE_PERF_TRACE)
   ::ttnn::MeshDevice &ttnnMeshDevice =
       deviceHandle.as<::ttnn::MeshDevice>(DeviceRuntime::TTNN);
-  for (::ttnn::IDevice *ttnnDevice : ttnnMeshDevice.get_devices()) {
-    ::tt::tt_metal::detail::DumpDeviceProfileResults(ttnnDevice);
-  }
+  ::tt::tt_metal::detail::DumpDeviceProfileResults(&ttnnMeshDevice);
+  // for (::ttnn::IDevice *ttnnDevice : ttnnMeshDevice.get_devices()) {
+  //   ::tt::tt_metal::detail::DumpDeviceProfileResults(ttnnDevice);
+  // }
 #endif
 }
 
