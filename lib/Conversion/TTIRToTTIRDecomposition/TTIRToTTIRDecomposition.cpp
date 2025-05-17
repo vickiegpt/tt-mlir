@@ -19,7 +19,10 @@
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/DialectConversion.h"
 
+#include "mlir/IR/BuiltinAttributes.h"
+#include "llvm/ADT/SmallVector.h"
 #include <algorithm>
+#include <cstdint>
 #include <numeric>
 
 using namespace mlir;
@@ -1596,6 +1599,57 @@ public:
 };
 } // namespace
 
+namespace {
+struct ReductionProdPattern : public OpConversionPattern<ttir::ProdOp> {
+public:
+  using OpConversionPattern<ttir::ProdOp>::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(ttir::ProdOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto dimArg = op.getDimArg();
+    if (!dimArg) {
+      return failure();
+    }
+
+    uint64_t rank = op.getInput().getType().getRank();
+    uint64_t dimArgSize = dimArg->size();
+    if (dimArgSize == 1 || dimArgSize == rank) {
+      return failure();
+    }
+
+    llvm::SmallVector<int32_t, 4> reduceDims;
+    for (auto dim : *dimArg) {
+      reduceDims.push_back(mlir::dyn_cast<IntegerAttr>(dim).getInt());
+    }
+    llvm::sort(reduceDims, std::greater<>());
+
+    Value newOp = op.getInput();
+    std::vector<int64_t> shape = op.getInput().getType().getShape();
+    auto elementType = op.getInput().getType().getElementType();
+    bool keepDim = op.getKeepDim();
+
+    for (int dim : reduceDims) {
+      mlir::ArrayAttr dimArg =
+          rewriter.getI32ArrayAttr(llvm::SmallVector<int32_t>(/*Size*/ 1, dim));
+      if (keepDim) {
+        shape[dim] = 1;
+      } else {
+        shape.erase(shape.begin() + dim);
+      }
+
+      RankedTensorType outputType = RankedTensorType::get(shape, elementType);
+      newOp = ttir::utils::createDPSOp<ttir::ProdOp>(
+          rewriter, op->getLoc(), outputType, newOp, op.getKeepDimAttr(),
+          dimArg);
+    }
+
+    rewriter.replaceOp(op, newOp);
+    return success();
+  }
+};
+} // namespace
+
 void populateTTIRToTTIRDecompositionPatterns(MLIRContext *ctx,
                                              RewritePatternSet &patterns,
                                              TypeConverter &typeConverter) {
@@ -1609,6 +1663,7 @@ void populateTTIRToTTIRDecompositionPatterns(MLIRContext *ctx,
   patterns.add<DotGeneralToMatmulConversionPattern>(typeConverter, ctx);
   patterns.add<ReductionAndPattern>(typeConverter, ctx);
   patterns.add<ReductionOrPattern>(typeConverter, ctx);
+  patterns.add<ReductionProdPattern>(typeConverter, ctx);
 }
 
 } // namespace mlir::tt

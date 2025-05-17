@@ -63,6 +63,15 @@ struct TTIRToTTIRDecompositionPass
               shape.size() == 1);
     });
 
+    target.addDynamicallyLegalOp<ttir::ProdOp>([&](ttir::ProdOp op) {
+      auto dimArg = op.getDimArg();
+      if (!dimArg) {
+        return true;
+      }
+      uint64_t rank = op.getInput().getType().getRank();
+      return (dimArg->size() == 1 || dimArg->size() == rank);
+    });
+
     TypeConverter typeConverter;
     // All types map 1:1.
     typeConverter.addConversion([](Type type) { return type; });
