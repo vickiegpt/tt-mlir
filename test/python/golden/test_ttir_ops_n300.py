@@ -319,3 +319,71 @@ def test_eltwise_multidevice(shapes: List[Shape], mesh_shape: Tuple[int, int], r
     compile_to_flatbuffer(
         eltwise_multidevice, shapes, mesh_shape=mesh_shape, test_base=request.node.name
     )
+
+
+@pytest.mark.parametrize(
+    "shapes,batch_dims_lhs,contract_dims_lhs,batch_dims_rhs,contract_dims_rhs",
+    [
+        (
+            [(4, 10, 3, 5, 7), (4, 10, 5, 7, 3), (4, 10, 3, 7, 10, 7, 3)],
+            [0],
+            [3],
+            [0],
+            [2],
+        )
+    ],
+)
+def test_dot_general(
+    shapes: List[Shape],
+    batch_dims_lhs: List[int],
+    contract_dims_lhs: List[int],
+    batch_dims_rhs: List[int],
+    contract_dims_rhs: List[int],
+    request,
+):
+    def dot_general(
+        in0: Operand,
+        in1: Operand,
+        out0: Operand,
+        builder: TTIRBuilder,
+        unit_attrs: List[str] = None,
+    ):
+        sharded = builder.mesh_shard(
+            in0,
+            shard_direction="#tt.shard_direction<full_to_shard>",
+            shard_type="#tt.shard_type<devices>",
+            shard_shape=(1, 2, 1, 1, 1),
+            shard_dims=(-1, 1),
+        )
+        sharded1 = builder.mesh_shard(
+            in1,
+            shard_direction="#tt.shard_direction<full_to_shard>",
+            shard_type="#tt.shard_type<devices>",
+            shard_shape=(1, 2, 1, 1, 1),
+            shard_dims=(-1, 1),
+        )
+        partial = builder.dot_general(
+            sharded,
+            sharded1,
+            out0,
+            batch_dims_lhs=batch_dims_lhs,
+            contract_dims_lhs=contract_dims_lhs,
+            batch_dims_rhs=batch_dims_rhs,
+            contract_dims_rhs=contract_dims_rhs,
+            unit_attrs=unit_attrs,
+        )
+        return builder.mesh_shard(
+            partial,
+            shard_direction="#tt.shard_direction<shard_to_full>",
+            shard_type="#tt.shard_type<devices>",
+            shard_shape=(1, 2, 1, 1, 1),
+            shard_dims=(-1, 1),
+        )
+
+    compile_to_flatbuffer(
+        dot_general,
+        shapes,
+        test_base=request.node.name,
+        output_root=request.config.getoption("--path"),
+        system_desc_path=request.config.getoption("--sys-desc"),
+    )
