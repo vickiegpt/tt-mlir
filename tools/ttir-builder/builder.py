@@ -698,17 +698,7 @@ class TTIRBuilder:
         batch_dims_rhs,
         contract_dims_rhs,
     ):
-
-        # New plan: figure out indexing, reshape at the end
-
-        # dot_dims_lhs = [d - len(index) for d in contract_dims_lhs]
-        # dot_dims_rhs = [d - len(index) for d in contract_dims_rhs]
-        lhs = torch.tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-        rhs = torch.tensor([[[1, 0], [0, 1]], [[1, 0], [0, 1]]])
-        print("lhs", lhs)
-        print("rhs", rhs)
-        # test = torch.tensor([[[1,2], [3,4], [5,6]],[[7,8], [9,10], [11,12]]])
-        # print(torch.permute(test, (2,1,0)))
+        # Follows conversion pattern in TTIRToTTIRDecomposition.cpp
         result_dims_lhs = [
             d
             for d in range(lhs.dim())
@@ -719,187 +709,57 @@ class TTIRBuilder:
             for d in range(rhs.dim())
             if d not in batch_dims_rhs and d not in contract_dims_rhs
         ]
-        # print((batch_dims_lhs + result_dims_lhs + contract_dims_lhs))
-        # print((batch_dims_rhs + contract_dims_rhs + result_dims_rhs))
-        transposed_lhs = torch.permute(
+
+        # Permute tensors to desired layout
+        lhs_permute = torch.permute(
             lhs, (batch_dims_lhs + result_dims_lhs + contract_dims_lhs)
         )
-        transposed_rhs = torch.permute(
+        rhs_permute = torch.permute(
             rhs, (batch_dims_rhs + contract_dims_rhs + result_dims_rhs)
         )
-        result_batching_dims = list(range(len(batch_dims_lhs)))
-        # result = torch.empty(*out.shape, dtype=lhs.dtype)
-        print(transposed_lhs)
-        print(transposed_rhs)
-        new_contract_dims_lhs = [
+        # Update dimensions to correspond with permuted tensors
+        permuted_batch_dims = list(range(len(batch_dims_lhs)))
+        permuted_contract_dims_lhs = [
             d for d in range((len(batch_dims_lhs) + len(result_dims_lhs)), lhs.dim())
         ]
-        # print("new_contract_dims_lhs", new_contract_dims_lhs)
-        new_contract_dims_rhs = [
+        permuted_contract_dims_rhs = [
             d
             for d in range(len(batch_dims_rhs), (rhs.dim() - len(result_dims_rhs)))
             if d not in batch_dims_rhs
         ]
-        # print("new_contract_dims_rhs", new_contract_dims_rhs)
-        result = torch.empty(*out.shape, dtype=lhs.dtype)
-        dim_ranges = []
-        for i in range(len(result_batching_dims)):
-            dim_ranges.append([j for j in range(list(lhs.shape)[i])])
-        import itertools
+        permuted_result_dims_lhs = [
+            d
+            for d in range(lhs.dim())
+            if d not in permuted_batch_dims and d not in permuted_contract_dims_lhs
+        ]
+        permuted_result_dims_rhs = [
+            d
+            for d in range(rhs.dim())
+            if d not in permuted_batch_dims and d not in permuted_contract_dims_rhs
+        ]
 
-        # print("dim_ranges", dim_ranges)
-
-        batch_indices = list(itertools.product(*dim_ranges))
-        # print("batch_indices", batch_indices)
-        for index in batch_indices:
-            # print("index", index)
-            transposed_lhs_slice = transposed_lhs[index]
-            transposed_rhs_slice = transposed_rhs[index]
-            dot_dims_lhs = [d - len(index) for d in new_contract_dims_lhs]
-            dot_dims_rhs = [d - len(index) for d in new_contract_dims_rhs]
-            print("dot_dims_lhs", dot_dims_lhs, "dot_dims_rhs", dot_dims_rhs)
-            print("transposed_lhs_slice", transposed_lhs_slice)
-            print("transposed_rhs_slice", transposed_rhs_slice)
-
-            index_result = torch.tensordot(
-                transposed_lhs_slice,
-                transposed_rhs_slice,
-                dims=([0], [0]),  # 1, #(dot_dims_lhs, dot_dims_rhs),
-            )
-            print(index_result)
-            a = torch.arange(60.0).reshape(3, 4, 5)
-            b = torch.arange(24.0).reshape(4, 3, 2)
-            print(torch.tensordot(a, b, dims=([1], [0])))
-
-            # print(result[index])
-
-        print("result", result)
-        print(torch.matmul(lhs, rhs))  # , dims=([0], [0])))
-        # This result has adjusted shape, but we need to convert it back to the original shape
-        # result = torch.permute(result, (batch_dims_lhs + result_dims_lhs + contract_dims_lhs))
-        # input shape =  4x10x3x5x7 -> 4x10x3x7xrhs , 4x10x5x7x3 -> 4x10xlhsx7x3
-        # output shape = 4x10x3x7x10x7x3 = batching +
-
-        """
-        with Context() as ctx, Location.file("test.mlir", line=42, col=1, context=ctx):
-            module = Module.create()
-            with InsertionPoint(module.body), Location.file("test.mlir", line=42, col=1):
-                attr = ir.DenseElementsAttr.get(array, shape = array.shape, type= ir.F32Type.get())
-                print(attr)
-                lhs = hlo.constant(attr)
-        """
-        # print(_get_op_result_or_op_results(ConstantOp(value=value, loc=loc, ip=ip)))
-
-        # Figure out ttir to ttir decomp matmul thing
-
-        # compute matmul input shape
-
-        def compute_product_of_dims(tensor_shape, dims):
+        def dim_prod(tensor, dims):
             prod = 1
             for d in dims:
-                prod *= tensor_shape[d]
+                prod *= tensor.shape[d]
             return prod
 
-        def create_matmul_input_shape(tensor, batch_dims, contract_dims, result_dims):
-            final_shape = []
-            for d in batch_dims:
-                final_shape.append(tensor.shape[d])
-            final_shape.append(compute_product_of_dims(tensor.shape, contract_dims))
-            final_shape.append(compute_product_of_dims(tensor.shape, result_dims))
-            return final_shape
-
-        def create_matmul_final():
-            pass
-
-        # Do i leave these two as lhs or transposed lhs, for now no
-        lhs_matmul_in_shape = create_matmul_input_shape(
-            lhs, batch_dims_lhs, contract_dims_lhs, result_dims_lhs
+        # Compute final shapes for matmul operation
+        lhs_matmul_shape = (
+            [dim_prod(lhs_permute, permuted_batch_dims)]
+            + [dim_prod(lhs_permute, permuted_result_dims_lhs)]
+            + [dim_prod(lhs_permute, permuted_contract_dims_lhs)]
         )
-        rhs_matmul_in_shape = create_matmul_input_shape(
-            rhs, batch_dims_rhs, result_dims_rhs, contract_dims_rhs
+        rhs_matmul_shape = (
+            [dim_prod(rhs_permute, permuted_batch_dims)]
+            + [dim_prod(rhs_permute, permuted_contract_dims_rhs)]
+            + [dim_prod(rhs_permute, permuted_result_dims_rhs)]
         )
-        # needed???:
-        matmul_out_shape = create_matmul_input_shape(
-            out, batch_dims_lhs, result_dims_lhs, result_dims_rhs
-        )
-        lhs_matmul = torch.reshape(transposed_lhs, lhs_matmul_in_shape)
-        rhs_matmul = torch.reshape(transposed_rhs, rhs_matmul_in_shape)
-        print("lhs_matmul", lhs_matmul)
-        print("rhs_matmul", rhs_matmul)
-        print(matmul_out_shape)
-        out_matmul = torch.zeros(matmul_out_shape, dtype=torch.long)  # dtype=out.dtype)
-        print("out_matmul", out_matmul)
-        print("test")
-        result = torch.empty(out.shape, dtype=lhs.dtype)
-        dim_ranges = []
-        for i in range(len(result_batching_dims)):
-            dim_ranges.append([j for j in range(list(lhs.shape)[i])])
-        import itertools
 
-        # print("dim_ranges", dim_ranges)
-
-        batch_indices = list(itertools.product(*dim_ranges))
-        # print("batch_indices", batch_indices)
-        for index in batch_indices:
-            result[index]
-        # am I really sure torch vs ttir matmuls are the same?
-        # matmul_result = torch.matmul(lhs_matmul, rhs_matmul) #, out=out_matmul)
-        print("test")
-        # print("matmul_result", matmul_result)
-
-        # result = torch.reshape(matmul_result, out.shape)
-
-        """
-        lshape = []
-        for d in batch_dims_lhs:
-            lshape.append(lhs.shape[d])
-        rshape = []
-        for d in batch_dims_rhs:
-            rshape.append(rhs.shape[d])
-        matmul_input_shape = []
-        for d in batch_dims_lhs:
-            lshape.append(lhs.shape[d])
-        matmul_lshape = []
-        for d in result_dims_lhs:
-            matmul_lshape.append(lhs.shape[d])
-        matmul_rshape = []
-        for d in result_dims_rhs:
-            matmul_rshape.append(rhs.shape[d])
-
-        prod_lc = 1
-        for d in contract_dims_lhs:
-            prod *= lhs.shape[d]
-        prod_rc = 1
-        for d in contract_dims_rhs:
-            prod *= rhs.shape[d]
-        prod_lr = 1
-        for d in result_dims_lhs:
-            prod *= lhs.shape[d]
-        prod_rr = 1
-        for d in result_dims_rhs:
-            prod *= rhs.shape[d]
-
-        l_matmul_input_shape = lshape + [prod_lc] + [prod_lr]
-        r_matmul_input_shape = rshape + [prod_rc] + [prod_rr]
-        print(l_matmul_input_shape)
-        print(r_matmul_input_shape)
-        lmatmul_input
-
-        """
-
-        # reshape tensors to (batching contracting results)
-        # reshape to (prod batching, prod contracting, prod results)
-        # for batch in
-        result = torch.tensordot(lhs, rhs, dims=([2], [1]))
-        print(result)
-        x = result[:, :, (0)]
-        print(x)
-        y = torch.empty((2, 2, 2, 2), dtype=lhs.dtype)
-        print(y)
-        y[0, :, :, :] = x
-        print(y)
-
-        return result
+        lhs_reshape = torch.reshape(lhs_permute, lhs_matmul_shape)
+        rhs_reshape = torch.reshape(rhs_permute, rhs_matmul_shape)
+        matmul_result = torch.matmul(lhs_reshape, rhs_reshape)
+        return torch.reshape(matmul_result, out.shape)
 
     # TTIR top level named ops
     # class TTIR_ElementwiseTernaryOp
