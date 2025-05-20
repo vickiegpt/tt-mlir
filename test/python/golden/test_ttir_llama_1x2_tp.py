@@ -7,7 +7,7 @@ import pytest
 
 from typing import List, Tuple
 from ttir_builder.utils import compile_to_flatbuffer
-from ttir_builder import Operand, TTIRBuilder, Shape
+from ttir_builder import Operand, TTIRBuilder, Shape, GoldenCheckLevel
 
 pytestmark = pytest.mark.n300
 
@@ -340,6 +340,7 @@ def test_llama_attention_1x2_tp_part1(
                 golden_part1(*input_tensors),
             ],
         )
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         return output83
 
@@ -449,6 +450,7 @@ def test_llama_attention_1x2_tp_part2(
                 golden_part2(*input_tensors),
             ],
         )
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         return output115
 

@@ -6,7 +6,7 @@ import pytest
 
 from typing import List, Tuple
 from ttir_builder.utils import compile_to_flatbuffer
-from ttir_builder import Operand, TTIRBuilder, Shape
+from ttir_builder import Operand, TTIRBuilder, Shape, GoldenCheckLevel
 
 pytestmark = pytest.mark.llmbox
 
@@ -45,6 +45,7 @@ def test_all_gather(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = pseudo_golden_all_gather(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded = builder.mesh_shard(
             in0,
@@ -98,6 +99,7 @@ def test_all_reduce(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = pseudo_golden_all_reduce(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded = builder.mesh_shard(
             in0,
@@ -164,6 +166,7 @@ def test_reduce_scatter(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = pseudo_golden_reduce_scatter(input, 3)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded = builder.mesh_shard(
             in0,
@@ -240,6 +243,7 @@ def test_collective_permute(shape: Shape, mesh_shape: Tuple[int, int], request):
         pairs = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4)]
         golden_output = pseudo_golden_collective_permute(input, pairs)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded = builder.mesh_shard(
             in0,
@@ -304,6 +308,7 @@ def test_matmul_2x4(shapes: List[Shape], mesh_shape: Tuple[int, int], request):
         weight = builder._get_golden_tensor(in1)
         golden_output = torch.matmul(input, weight)
         builder.set_graph_input_output([input, weight], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -374,6 +379,7 @@ def test_matmul_1x8(shapes: List[Shape], mesh_shape: Tuple[int, int], request):
         weight = builder._get_golden_tensor(in1)
         golden_output = torch.matmul(input, weight)
         builder.set_graph_input_output([input, weight], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -434,6 +440,7 @@ def test_neg_2x4(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -482,6 +489,7 @@ def test_neg_2x4_cluster_0(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -530,6 +538,7 @@ def test_neg_2x4_cluster_1(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -578,6 +587,7 @@ def test_neg_2x4_reversed_cluster(shape: Shape, mesh_shape: Tuple[int, int], req
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -626,6 +636,7 @@ def test_neg_2x4_reversed_cluster_0(shape: Shape, mesh_shape: Tuple[int, int], r
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -675,6 +686,7 @@ def test_neg_1x8_dim_3(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -724,6 +736,7 @@ def test_neg_1x8_dim_1(shape: Shape, mesh_shape: Tuple[int, int], request):
         input = builder._get_golden_tensor(in0)
         golden_output = torch.neg(input)
         builder.set_graph_input_output([input], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,
@@ -774,6 +787,7 @@ def test_eltwise_multidevice(shapes: List[Shape], mesh_shape: Tuple[int, int], r
         weight = builder._get_golden_tensor(in1)
         golden_output = torch.add(input, weight)
         builder.set_graph_input_output([input, weight], [golden_output])
+        builder.golden_check_level(GoldenCheckLevel.GRAPH_LEVEL)
 
         sharded_in0 = builder.mesh_shard(
             in0,

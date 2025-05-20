@@ -262,7 +262,6 @@ class TTIRBuilder:
             self.id_golden_map[input_key] = Golden(tensor)
 
         if outputs is not None:
-            self.golden_check_level = GoldenCheckLevel.GRAPH_LEVEL
             for index, tensor in enumerate(outputs):
                 output_key = f"output_{index}"
                 if not override and output_key in self.id_golden_map:
@@ -632,8 +631,6 @@ class TTIRBuilder:
         inputs: List[Operand],
         kwargs: dict = {},
     ) -> OpView:
-        # Force GoldenCheckLevel to GRAPH_LEVEL when CCL Ops are used(phase 0)
-        self.golden_check_level = GoldenCheckLevel.GRAPH_LEVEL
         return self.op_proxy(
             op_golden_function=op_golden_function,
             op_ttir_function=op_ttir_function,

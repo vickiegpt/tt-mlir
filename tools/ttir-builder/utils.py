@@ -20,7 +20,7 @@ from ttmlir.passes import (
     MLIRModuleLogger,
 )
 
-from .builder import Shape, TTIRBuilder, TypeInfo
+from .builder import Shape, TTIRBuilder, TypeInfo, GoldenCheckLevel
 
 TT_MLIR_HOME = os.environ.get("TT_MLIR_HOME", "")
 
