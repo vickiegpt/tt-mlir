@@ -134,9 +134,12 @@ void ProgramExecutor::execute() {
     LOG_DEBUG(LogType::LogRuntimeTTNN,
               "Executing operation: ", op->debug_info()->c_str());
     tracyLogOpLocation(op);
+    LOG_DEBUG(LogType::LogRuntimeTTNN, "Started operation");
     runCallback(debug::Hooks::get().getPreOperatorCallback(), executableHandle,
                 op, context.get());
+    LOG_DEBUG(LogType::LogRuntimeTTNN, "Ran pre callback");
     runOperation(op);
+    LOG_DEBUG(LogType::LogRuntimeTTNN, "Ran operation");
     runCallback(debug::Hooks::get().getPostOperatorCallback(), executableHandle,
                 op, context.get());
     dumpPerfCountersIfNeeded(context->getMeshDevice());
@@ -165,6 +168,7 @@ void ProgramExecutor::dumpPerfCountersIfNeeded(::ttnn::MeshDevice &meshDevice) {
 }
 
 void ProgramExecutor::runOperation(const ::tt::target::ttnn::Operation *op) {
+  LOG_DEBUG(LogType::LogRuntimeTTNN, "Running operation: ");
   switch (op->type_type()) {
   case ::tt::target::ttnn::OpType::GetDeviceOp: {
     return operations::context::run(op->type_as_GetDeviceOp(), getContext());
@@ -186,6 +190,10 @@ void ProgramExecutor::runOperation(const ::tt::target::ttnn::Operation *op) {
     return operations::layout::run(op->type_as_ToDeviceOp(), getContext());
   }
   case ::tt::target::ttnn::OpType::FromDeviceOp: {
+    LOG_DEBUG(LogType::LogRuntimeTTNN, "From device op");
+    // LOG_DEBUG(LogType::LogRuntimeTTNN, "OP info: ", op->in()->global_id());
+    // LOG_DEBUG(LogType::LogRuntimeTTNN,
+    // context->getTensorPool()->liveTensors())
     return operations::layout::run(op->type_as_FromDeviceOp(), getContext());
   }
   case ::tt::target::ttnn::OpType::EmptyOp: {
