@@ -7,6 +7,8 @@
 #include "tt/runtime/detail/logger.h"
 #include "tt/runtime/detail/ttnn/ttnn.h"
 
+#include "ttnn/operations/datamovement/fill_pad/fill_pad.h"
+
 #include "tt/runtime/detail/ttnn/operations/utils.h"
 #include "tt/runtime/detail/ttnn/utils.h"
 
