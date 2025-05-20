@@ -32,9 +32,12 @@ void run(const ::tt::target::ttnn::MatmulOp *op, ProgramContext &context) {
   std::optional<::ttnn::operations::matmul::MatmulProgramConfig>
       matmulProgramConfig = utils::createMatmulProgramConfigIfNeeded(op);
 
+  auto real_lhs = ::ttnn::fill_implicit_tile_padding(lhs, 0);
+  auto real_rhs = ::ttnn::fill_implicit_tile_padding(rhs, 0);
+
   ::ttnn::Tensor output = ::ttnn::matmul(
-      lhs, rhs, op->transpose_a(), op->transpose_b(), outputMemoryConfig,
-      outputDataType, matmulProgramConfig,
+      real_lhs, real_rhs, op->transpose_a(), op->transpose_b(),
+      outputMemoryConfig, outputDataType, matmulProgramConfig,
       /*activation=*/std::nullopt, /*compute_kernel_config=*/std::nullopt,
       /*core_grid=*/std::nullopt, /*output_tile=*/std::nullopt,
       /* optional_output_tensor=*/std::nullopt);
