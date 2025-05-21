@@ -216,6 +216,7 @@ class TTIRBuilder:
         return golden
 
     def get_golden_map(self) -> Dict:
+        # print("BUILDER MAP: ", self.id_golden_map)
         golden_info = {}
         if self.golden_check_level == GoldenCheckLevel.DISABLED:
             return golden_info
@@ -717,6 +718,8 @@ class TTIRBuilder:
         rhs_permute = torch.permute(
             rhs, (batch_dims_rhs + contract_dims_rhs + result_dims_rhs)
         )
+        print((batch_dims_lhs + result_dims_lhs + contract_dims_lhs))
+        print((batch_dims_rhs + contract_dims_rhs + result_dims_rhs))
         # Update dimensions to correspond with permuted tensors
         permuted_batch_dims = list(range(len(batch_dims_lhs)))
         permuted_contract_dims_lhs = [

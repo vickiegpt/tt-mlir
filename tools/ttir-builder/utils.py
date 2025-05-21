@@ -360,7 +360,8 @@ def compile_to_flatbuffer(
         mesh_shape=mesh_shape,
         module_dump=module_dump,
     )
-
+    print(module)
+    print(type(module))
     output_file_mlir = get_target_path(output_root, test_base + mlir_suffix, target)
     output_file_fbb = ".".join([output_file_mlir, target_extension])
 
@@ -377,9 +378,13 @@ def compile_to_flatbuffer(
         argument_types_string=argument_types_string,
     )
     print(f"{target} pipeline ran successfully.")
-
+    print(module)
+    print(type(module))
     module_logger = MLIRModuleLogger()
     module_logger.attach_context(module.context)
+    print("GOLDEN MAP: ", builder.get_golden_map())
+    # Can I update builder's golden map?
+    # For
 
     # Compile TT{Metal,NN} MLIR -> flatbuffer
     to_flatbuffer(

@@ -120,8 +120,13 @@ def golden(callback_runtime_config, binary, program_context, op_context):
     logging.debug("executing golden comparison")
 
     loc = ttrt.runtime.get_op_loc_info(op_context)
-
+    print(loc)
+    print(type(loc))
+    # THE LOCATION IS ALWAYS THE SAME PER BUILDER OP
+    # Location is only unique to builder op, not to ttnn op after ttnn_to_flatbuffer_file
     op_golden_tensor = binary.get_debug_info_golden(loc)
+    debugstr = ttrt.runtime.get_op_debug_str(op_context)
+    logging.debug(debugstr)
 
     if op_golden_tensor is None:
         logging.debug("Golden tensor is None - skipping golden comparison")
@@ -136,17 +141,20 @@ def golden(callback_runtime_config, binary, program_context, op_context):
     rt_buffer = op_output_tensor.get_data_buffer()
     dtype = ttrt_datatype_to_torch_dtype(op_golden_tensor.dtype)
     assert ttrt_datatype_to_torch_dtype(op_output_tensor.get_dtype()) == dtype
-    golden_tensor_torch = torch.frombuffer(op_golden_tensor, dtype=dtype).flatten()
+    golden_tensor_torch = torch.frombuffer(op_golden_tensor, dtype=dtype)  # .flatten()
 
-    output_tensor_torch = torch.frombuffer(rt_buffer, dtype=dtype).flatten()
+    output_tensor_torch = torch.frombuffer(rt_buffer, dtype=dtype)  # .flatten()
+
+    logging.debug(golden_tensor_torch)
+    logging.debug(output_tensor_torch)
     if callback_runtime_config.save_golden_tensors:
         torch.save(
             golden_tensor_torch,
-            f"{callback_runtime_config.artifact_dir}/{loc}_golden.pt",
+            f"{callback_runtime_config.artifact_dir}/{callback_runtime_config.counter}_golden.pt",
         )
         torch.save(
             output_tensor_torch,
-            f"{callback_runtime_config.artifact_dir}/{loc}_device.pt",
+            f"{callback_runtime_config.artifact_dir}/{callback_runtime_config.counter}_device.pt",
         )
 
     if golden_tensor_torch.shape != output_tensor_torch.shape:
