@@ -4,6 +4,7 @@
 
 #include "ttmlir/Dialect/EmitPy/IR/EmitPy.h"
 #include "ttmlir/Dialect/EmitPy/IR/EmitPyOps.h"
+#include "ttmlir/Dialect/EmitPy/IR/EmitPyTypes.h"
 #include "ttmlir/Dialect/TT/IR/TT.h"
 
 #include "mlir/InitAllDialects.h"
@@ -21,4 +22,8 @@ void EmitPyDialect::initialize() {
 #define GET_OP_LIST
 #include "ttmlir/Dialect/EmitPy/IR/EmitPyOps.cpp.inc"
       >();
+  //   addTypes<
+  // #define GET_TYPEDEF_LIST
+  // #include "ttmlir/Dialect/EmitPy/IR/EmitPyOpsTypes.cpp.inc"
+  //       >();
 }
