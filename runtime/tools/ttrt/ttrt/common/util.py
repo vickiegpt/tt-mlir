@@ -647,7 +647,10 @@ class Binary(Flatbuffer):
             self.fbb = ttrt.binary.load_binary_from_path(file_path)
         else:
             self.fbb = ttrt.binary.load_binary_from_capsule(capsule)
-        self.fbb_dict = ttrt.binary.as_dict(self.fbb)
+        self.fbb_dict = ttrt.binary.as_dict(self.fbb, logging=self.logging)
+        self.path_sd = ttrt.binary.load_system_desc_from_path(file_path)
+        print("self.path_sd=, ", type(self.path_sd))
+
         self.version = self.fbb.version
         self.programs = []
 
@@ -657,10 +660,24 @@ class Binary(Flatbuffer):
 
     def check_system_desc(self, query):
         import ttrt.binary
+        from ttmlir import optimizer_overrides
+
+        override_handler = optimizer_overrides.OptimizerOverridesHandler()
+        override_handler.set_system_desc_path(f"{artifacts_dir}/system_desc.ttsys")
 
         try:
             fbb_system_desc = self.fbb_dict["system_desc"]
             device_system_desc = query.get_system_desc_as_dict()["system_desc"]
+            print()
+            # loaded_sd = ttrt.binary.load_from_path()
+            if fbb_system_desc == self.path_sd:
+                print("yes")
+            else:
+                print("nope")
+            if device_system_desc == self.path_sd:
+                print("yes2")
+            else:
+                print("nope2")
 
             if fbb_system_desc != device_system_desc:
                 # Serialize to JSON with pretty printing and split into lines
@@ -824,7 +841,9 @@ class SystemDesc(Flatbuffer):
         import ttrt.binary
 
         self.fbb = ttrt.binary.load_system_desc_from_path(file_path)
+        print("util self.fbb=, ", type(self.fbb))
         self.fbb_dict = ttrt.binary.as_dict(self.fbb)
+        print("util sys desc dict=", self.fbb_dict.keys())
         self.version = self.fbb.version
 
         # temporary state value to check if test failed
@@ -832,7 +851,7 @@ class SystemDesc(Flatbuffer):
 
 
 class TTRTTestException(Exception):
-    """ "Base class for all "Test Specific" Errors in TTRT"""
+    """Base class for all "Test Specific" Errors in TTRT"""
 
     pass
 

@@ -326,7 +326,7 @@ class Run:
         if self["--save-artifacts"]:
             self.artifacts.create_artifacts()
 
-        self.logging.debug(f"------finished preprocessing read API")
+        self.logging.debug(f"------finished preprocessing run API")
 
     def check_constraints(self):
         self.logging.debug(f"------checking constraints for run API")
@@ -359,7 +359,11 @@ class Run:
                 continue
 
             try:
-                bin.check_system_desc(self.query)
+                import ttrt.binary
+
+                print(type(bin.fbb))
+                print(type(bin))
+                ttrt.binary.verify_system_desc(self.query.system_desc, bin.path_sd)
             except Exception as e:
                 test_result = {
                     "file_path": path,
@@ -415,7 +419,9 @@ class Run:
                 continue
 
             try:
-                bin.check_system_desc(self.query)
+                print(type(bin.fbb))
+                print(type(bin))
+                ttrt.binary.verify_system_desc(self.query.system_desc, bin.path_sd)
             except Exception as e:
                 test_result = {
                     "file_path": path,

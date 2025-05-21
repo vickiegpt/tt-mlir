@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <fstream>
+#include <iostream>
 
 #include "flatbuffers/idl.h"
 
@@ -85,6 +86,54 @@ std::string asJson(Flatbuffer binary) {
       ::tt::target::ttnn::TTNNBinaryBinarySchema::size());
 }
 
+bool verifySystemDesc(SystemDesc &artifactSystemDesc,
+                      SystemDesc &systemDescFromPath) {
+  // Flatbuffer binary = Flatbuffer::loadFromPath(path);
+  // const auto *binarySystemDesc = getBinary(binary)->system_desc();
+  // const auto *artifactSystemDescRoot = artifactSystemDesc.get();
+  // const auto *systemDescRootFromPath = systemDescFromPath.get();
+  // std::cout << "Binary system desc: " << typeid(binarySystemDesc)
+  //           << ", System desc root: " << typeid(systemDescRoot) << std::endl;
+  // if (artifactSystemDesc == nullptr ||
+  //     systemDescFromPath == nullptr) {
+  //   LOG_FATAL("Invalid system desc");
+  // }
+  if (artifactSystemDesc == systemDescFromPath) {
+    std::cout << "System descs are the same" << std::endl;
+    return true;
+  }
+  // if (*artifactSystemDesc == *systemDescFromPath) {
+  //   std::cout << "System descs are the same" << std::endl;
+  //   return true;
+  // }
+  if (artifactSystemDesc.handle.get() == systemDescFromPath.handle.get()) {
+    std::cout << "System desc handles are the same" << std::endl;
+    return true;
+  }
+
+  // LOG_INFO("Binary system desc: ", artifactSystemDesc);
+  // LOG_INFO("System desc root: ", systemDescFromPath);
+  // LOG_INFO("System desc: ", systemDesc);
+  std::cout << "System descs are different" << std::endl;
+  LOG_FATAL("I don't know how these work");
+  return false;
+}
+/*
+  if (binarySystemDesc->version()->major() !=
+      systemDescRoot->version()->major()) {
+    return false;
+  }
+  if (binarySystemDesc->version()->minor() !=
+      systemDescRoot->version()->minor()) {
+    return false;
+  }
+  if (binarySystemDesc->version()->patch() !=
+      systemDescRoot->version()->patch()) {
+    return false;
+  }
+  return true;
+*/
+
 std::vector<TensorDesc> getProgramInputs(Flatbuffer binary,
                                          std::uint32_t programIndex) {
   std::vector<TensorDesc> inputs;
@@ -165,6 +214,39 @@ std::string asJson(Flatbuffer binary) {
       ::tt::target::metal::TTMetalBinaryBinarySchema::size());
 }
 
+bool verifySystemDesc(SystemDesc &artifactSystemDesc,
+                      SystemDesc &systemDescFromPath) {
+  // Flatbuffer binary = Flatbuffer::loadFromPath(path);
+  // const auto *binarySystemDesc = getBinary(binary)->system_desc();
+  const auto *artifactSystemDescRoot = artifactSystemDesc.get();
+  const auto *systemDescRootFromPath = systemDescFromPath.get();
+  // std::cout << "Binary system desc: " << typeid(binarySystemDesc)
+  //           << ", System desc root: " << typeid(systemDescRoot) << std::endl;
+  // if (artifactSystemDesc == nullptr ||
+  //     systemDescFromPath == nullptr) {
+  //   LOG_FATAL("Invalid system desc");
+  // }
+  if (artifactSystemDescRoot == systemDescRootFromPath) {
+    std::cout << "System descs are the same" << std::endl;
+    return true;
+  }
+  // if (*artifactSystemDesc == *systemDescFromPath) {
+  //   std::cout << "System descs are the same" << std::endl;
+  //   return true;
+  // }
+  if (artifactSystemDesc.handle.get() == systemDescFromPath.handle.get()) {
+    std::cout << "System desc handles are the same" << std::endl;
+    return true;
+  }
+
+  // LOG_INFO("Binary system desc: ", artifactSystemDesc);
+  // LOG_INFO("System desc root: ", systemDescFromPath);
+  // LOG_INFO("System desc: ", systemDesc);
+  std::cout << "System descs are different" << std::endl;
+  LOG_FATAL("I don't know how these work");
+  return false;
+}
+
 static std::vector<TensorDesc>
 getTensorDescs(const ::flatbuffers::Vector<
                ::flatbuffers::Offset<tt::target::metal::TensorRef>> *tensors) {
@@ -243,6 +325,27 @@ std::string asJson(Flatbuffer binary) {
   return ::tt::runtime::asJson(
       binary.handle.get(), ::tt::target::SystemDescRootBinarySchema::data(),
       ::tt::target::SystemDescRootBinarySchema::size());
+}
+
+bool verifySystemDesc(SystemDesc &artifactSystemDesc,
+                      SystemDesc &systemDescFromPath) {
+  const auto *artifactDesc = artifactSystemDesc.get();
+  const auto *descFromPath = systemDescFromPath.get();
+  for (const auto cpuDesc : *artifactDesc->cpu_descs()) {
+    if (cpuDesc->role()->Host() != descFromPath->cpu_descs()->role()->Host()) {
+      return false;
+    }
+    if (cpuDesc->role()->Device() !=
+        descFromPath->cpu_descs()->role()->Device()) {
+      return false;
+    }
+    if (cpuDesc->target_triple() !=
+        descFromPath->cpu_descs()->target_triple()) {
+      return false;
+    }
+    std::cout << "CPU descs are the same" << std::endl;
+  }
+  return true;
 }
 
 } // namespace system_desc
@@ -345,6 +448,32 @@ std::string Flatbuffer::asJson() const {
 SystemDesc SystemDesc::loadFromPath(const char *path) {
   return SystemDesc(Flatbuffer::loadFromPath(path).handle);
 }
+
+bool SystemDesc::verifySystemDesc(SystemDesc &systemDescFromPath) {
+  bool verified = *this == systemDescFromPath;
+  if (!verified) {
+    LOG_FATAL("System descs are different");
+  }
+  return verified; // SystemDesc::verifySystemDesc(*this, systemDescFromPath);
+}
+
+/*
+bool
+SystemDesc::verifySystemDesc(SystemDesc &systemDescFromPath) {
+  Flatbuffer binary = Flatbuffer::loadFromPath(path);
+  if (::tt::target::ttnn::SizePrefixedTTNNBinaryBufferHasIdentifier(
+          binary.handle.get())) {
+    return ttnn::verifySystemDesc(*this, SystemDesc &systemDescFromPath);
+  }
+
+  if (::tt::target::metal::SizePrefixedTTMetalBinaryBufferHasIdentifier(
+          binary.handle.get())) {
+    return metal::verifySystemDesc(*this, SystemDesc &systemDescFromPath);
+  }
+
+  LOG_FATAL("Unsupported binary format");
+}
+*/
 
 Binary Binary::loadFromPath(const char *path) {
   return Binary(Flatbuffer::loadFromPath(path).handle);

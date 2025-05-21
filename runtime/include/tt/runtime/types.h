@@ -6,11 +6,13 @@
 #define TT_RUNTIME_TYPES_H
 
 #include <cassert>
+#include <iostream>
 #include <memory>
 #include <numeric>
 #include <optional>
 #include <string_view>
 #include <vector>
+// #include <ostream>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcovered-switch-default"
@@ -165,17 +167,70 @@ struct Flatbuffer : public detail::ObjectImpl {
 };
 
 struct SystemDesc : public Flatbuffer {
+  bool operator==(const SystemDesc &other) const {
+    /*
+    objhash =
+    ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())->ttmlir_git_hash();
+    arghash =
+    ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())->ttmlir_git_hash();
+    objID =
+    ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())->product_identifier();
+    argID =
+    ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())->product_identifier();
+    argID =
+    ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())->version()->major();
+    argID =
+    ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())->product_identifier();
+    std::cout << "SystemDesc::operator== " << handle.get() << std::endl;
+    std::cout << "SystemDesc::operator== argument handle " << other.handle.get()
+    << std::endl; std::cout << "SystemDesc::operator== " << handle.get() <<
+    std::endl; std::cout << "SystemDesc::operator== argument handle " <<
+    other.handle.get() << std::endl; std::cout << "SystemDesc::operator== " <<
+    handle.get() << std::endl; std::cout << "SystemDesc::operator== argument
+    handle " << other.handle.get() << std::endl;
+    */
+    return handle.get() == other.handle.get();
+  }
   using Flatbuffer::Flatbuffer;
 
   static SystemDesc loadFromPath(const char *path);
+
+  bool verifySystemDesc(SystemDesc &systemDescFromPath);
 
   const ::tt::target::SystemDesc *get() const {
     return ::tt::target::GetSizePrefixedSystemDescRoot(handle.get())
         ->system_desc();
   }
   const ::tt::target::SystemDesc *operator->() const { return get(); }
+  // std::unordered_map<std::string, std::vector<std::unordered_map<std::string,
+  // std::vector<maps> or std::uint32>>>>>> asDict() const;
 };
+/*
+inline std::ostream &operator<<(std::ostream &os, SystemDesc &systemDesc) {
+  os << "debug::Env{\n"
+     << "\t"
+     << "dumpKernelsToDisk: " << env.dumpKernelsToDisk << "\n"
+     << "\t"
+     << "loadKernelsFromDisk: " << env.loadKernelsFromDisk << "\n"
+     << "\t"
+     << "deviceAddressValidation: " << env.deviceAddressValidation << "\n"
+     << "\t"
+     << "blockingCQ: " << env.blockingCQ << "\n"
+     << "}";
+  return os;
+}
 
+inline std::string toString(DeviceRuntime runtime) {
+  switch (runtime) {
+  case DeviceRuntime::TTNN:
+    return "TTNN";
+  case DeviceRuntime::TTMetal:
+    return "TTMetal";
+  case DeviceRuntime::Disabled:
+    return "Disabled";
+  }
+}
+*/
 class TensorCache;
 struct Binary : public Flatbuffer {
   Binary(Flatbuffer fb);

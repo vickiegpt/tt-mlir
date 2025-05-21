@@ -47,6 +47,11 @@ PYBIND11_MODULE(_C, m) {
                              &tt::runtime::SystemDesc::getFileIdentifier)
       .def("as_json", &tt::runtime::SystemDesc::asJson)
       .def("store", &tt::runtime::SystemDesc::store);
+  //.def("__str__", [](tt::runtime::SystemDesc &env) {
+  //  std::stringstream os;
+  //  os << env;
+  //  return os.str();
+  //});
   m.def("load_from_path", &tt::runtime::Flatbuffer::loadFromPath);
   m.def("load_binary_from_path", &tt::runtime::Binary::loadFromPath);
   m.def("load_binary_from_capsule", [](py::capsule capsule) {
@@ -58,6 +63,8 @@ PYBIND11_MODULE(_C, m) {
                                                   // shared_ptr*
   });
   m.def("load_system_desc_from_path", &tt::runtime::SystemDesc::loadFromPath);
+  m.def("verify_system_desc", &tt::runtime::SystemDesc::verifySystemDesc,
+        "Check if the artifact system desc matches the binary system desc");
 
   /**
    * Binding for the `GoldenTensor` type

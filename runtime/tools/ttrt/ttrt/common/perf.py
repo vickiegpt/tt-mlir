@@ -208,7 +208,9 @@ class Perf:
                 )
                 return
 
-            if not bin.check_system_desc(self.query):
+            print(type(bin.fbb))
+            print(type(bin))
+            if not ttrt.binary.verify_system_desc(self.query.system_desc, bin.path_sd):
                 self.logger.warning(
                     "System desc does not match, are you sure that the binary is valid? - Skipped"
                 )
@@ -250,7 +252,9 @@ class Perf:
                     continue
 
                 try:
-                    bin.check_system_desc(self.query)
+                    print(type(bin.fbb))
+                    print(type(bin))
+                    ttrt.binary.verify_system_desc(self.query.system_desc, bin.path_sd)
                 except Exception as e:
                     test_result = {
                         "file_path": path,
@@ -308,7 +312,9 @@ class Perf:
                     continue
 
                 try:
-                    bin.check_system_desc(self.query)
+                    print(type(bin.fbb))
+                    print(type(bin))
+                    ttrt.binary.verify_system_desc(self.query.system_desc, bin.path_sd)
                 except Exception as e:
                     test_result = {
                         "file_path": path,

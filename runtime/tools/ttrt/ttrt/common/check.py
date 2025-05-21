@@ -207,8 +207,14 @@ class Check:
                         "no system descriptor file provided - querying from host machine"
                     )
                     try:
+                        import ttrt.binary
+
                         self.query()
-                        bin.check_system_desc(self.query)
+                        print(type(bin.fbb))
+                        print(type(bin))
+                        ttrt.binary.verify_system_desc(
+                            self.query.system_desc, bin.path_sd
+                        )
                     except Exception as e:
                         self.logging.info(str(e))
                         test_result["result"] = "error"
