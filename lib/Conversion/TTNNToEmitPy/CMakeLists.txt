@@ -10,6 +10,7 @@ add_mlir_conversion_library(TTMLIRTTNNToEmitPy
   MLIREMITPYDialect
 
   LINK_LIBS PUBLIC
+  MLIREMITPYDialect
   MLIRTTTransforms
   MLIRIR
   MLIRPass
