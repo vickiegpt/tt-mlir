@@ -60,7 +60,6 @@ runEltwiseTernaryWhereOp(const ::tt::target::ttnn::EltwiseTernaryWhereOp *op,
       ::ttnn::Tensor::from_vector<float>(result, out_spec, first.mesh_device());
   // out_cpu.to_device(first.device());
   // out_cpu.to_layout(first.layout());
-  std::cout << "Bypassed WhereOp";
 
   tensorPool.insertTTNNTensorAndValidate(op->out(), out_cpu);
 }
