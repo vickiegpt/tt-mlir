@@ -54,7 +54,7 @@ runEltwiseTernaryWhereOp(const ::tt::target::ttnn::EltwiseTernaryWhereOp *op,
     }
   }
 
-  ::ttnn::TensorSpec out_spec = first.get_tensor_spec();
+  ::ttnn::TensorSpec out_spec = first.tensor_spec();
 
   ::ttnn::Tensor out_cpu =
       ::ttnn::Tensor::from_vector<float>(result, out_spec, first.mesh_device());
