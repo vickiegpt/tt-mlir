@@ -170,11 +170,15 @@ public:
 
 private:
   mlir::APFloat getPaddingValue() const {
-    static_assert(std::is_same_v<ReduceOp, ttnn::MinOp> ||
-                  std::is_same_v<ReduceOp, ttnn::MaxOp>);
-    return mlir::APFloat::getInf(
-        mlir::APFloat::IEEEsingle(),
-        /*Negative=*/std::is_same_v<ReduceOp, mlir::tt::ttnn::MaxOp>);
+    if constexpr (std::is_same_v<ReduceOp, ttnn::MinOp>) {
+      return mlir::APFloat::getInf(mlir::APFloat::IEEEsingle(), false);
+    } else if constexpr (std::is_same_v<ReduceOp, ttnn::MaxOp>) {
+      return mlir::APFloat::getInf(mlir::APFloat::IEEEsingle(), true);
+    } else if constexpr (std::is_same_v<ReduceOp, ttnn::SumOp>) {
+      return mlir::APFloat(mlir::APFloat::IEEEsingle(), "0.0");
+    } else {
+      static_assert(false, "Unsupported ReduceOp type");
+    }
   }
 };
 } // namespace mlir::tt::ttnn::workarounds::decomposition
