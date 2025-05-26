@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(TT_METAL_VERSION "f025854dea69b6b62c8b1ce0075917daffce6898")
+set(TT_METAL_VERSION "dd9616bb7600acfa0a0171c9c0b00e55c4e26e68")
 
 set(CMAKE_INSTALL_MESSAGE LAZY)  # suppress "Up-to-date:..." messages in incremental builds
 
@@ -172,6 +172,7 @@ if (TT_RUNTIME_ENABLE_PERF_TRACE)
     DIRECTORY
       ${METAL_BUILD_DIR}/tools
     DESTINATION ${CMAKE_INSTALL_PREFIX}/tt-metal
+    USE_SOURCE_PERMISSIONS
     COMPONENT SharedLib
     EXCLUDE_FROM_ALL
   )
