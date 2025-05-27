@@ -1572,6 +1572,12 @@ def TTNN_ZerosOp : TTNN_NamedFullOp<"zeros"> {
       %0 = "ttnn.zeros"() <{shape = array<i32:64, 28, 28>}> : () -> tensor<64x28x28xbf16>
       // %0: [[[0, 0, 0, ..., 0], [0, 0, 0, ..., 0], ..., [0, 0, 0, ..., 0]]]
   }];
+
+  let extraClassDeclaration = [{
+    wa::TTNNOperandsWorkarounds getOperandsWorkarounds() {
+      return wa::TTNNOperandsWorkaroundsFactory::createZerosOpOperandsWorkarounds(getType());
+    }
+  }];
 }
 
 def TTNN_OnesOp : TTNN_NamedFullOp<"ones"> {
@@ -1588,21 +1594,42 @@ def TTNN_OnesOp : TTNN_NamedFullOp<"ones"> {
 }
 
 def TTNN_FullOp : TTNN_CreationOp<"full"> {
-    let summary = "Full op.";
-    let description = [{
-      Tensor full operation
-    }];
+  let summary = "Creates a tensor filled with the specified value";
+  let description = [{
+    Tensor operation to create a tensor filled with a specified value.
 
-    let arguments = (ins TTNN_Device:$device, F32Attr:$fillValue);
-    let results = (outs AnyRankedTensor:$result);
+    Given a `shape` and a `fill_value`, produces a tensor with the shape, filled with the specified value.
 
-    let extraClassDeclaration = [{
-      wa::TTNNOperandsWorkarounds getOperandsWorkarounds() {
-        mlir::tt::ttnn::FullOp op = mlir::cast<mlir::tt::ttnn::FullOp>(this->getOperation());
-        auto outputType = mlir::cast<RankedTensorType>(op.getType());
-        return wa::TTNNOperandsWorkaroundsFactory::createFullOpOperandsWorkarounds(outputType);
-      }
-    }];
+    Example:
+      %0 = "ttnn.full"() <{
+        dtype = #tt.supportedDataTypes<u32>,
+        fill_value = 3 : i32,
+        layout = #ttnn.layout<tile>,
+        shape = #ttnn.shape<64x128>
+      }> : () -> tensor<64x128xui32>
+      // %0: [[[7, 7, 7, ..., 7], [7, 7, 7, ..., 7], ..., [7, 7, 7, ..., 7]]]
+  }];
+
+  let arguments = (ins TTNN_ShapeAttr:$shape,
+                       AnyAttrOf<[F32Attr, I32Attr]>:$fill_value,
+                       OptionalAttr<TT_DataTypeAttr>:$dtype,
+                       OptionalAttr<TTNN_LayoutAttr>:$layout,
+                       Optional<TTNN_Device>:$device,
+                       OptionalAttr<TTNN_MemoryConfigAttr>:$memory_config);
+
+  let results = (outs AnyRankedTensor:$result);
+
+  let builders =
+  [
+    OpBuilder<(ins "Type": $resultType, "Attribute": $fillValue, "Value": $device)>
+  ];
+
+  let extraClassDeclaration = [{
+    wa::TTNNOperandsWorkarounds getOperandsWorkarounds() {
+      auto outputType = getType();
+      return wa::TTNNOperandsWorkaroundsFactory::createFullOpOperandsWorkarounds(outputType);
+    }
+  }];
 }
 
 def TTNN_ConstantOp : TTNN_CreationOp<"constant", [AllShapesMatch<["value", "result"]>]> {

@@ -19,12 +19,14 @@ You can use tt-mlir with Ubuntu or Mac OS, however the runtime does not work on 
 * CMake 3.20 or higher
 * Python 3.10
 * python3.10-venv
+* openmpi
 
 #### Ubuntu
 Install Clang, Ninja, CMake, and python3.10-venv:
 
 ```bash
 sudo apt install git clang cmake ninja-build pip python3.10-venv
+wget -q https://github.com/dmakoviichuk-tt/mpi-ulfm/releases/download/v5.0.7-ulfm/openmpi-ulfm_5.0.7-1_amd64.deb -O /tmp/openmpi-ulfm.deb && sudo apt install /tmp/openmpi-ulfm.deb
 ```
 
 You should now have the required dependencies installed.
@@ -32,8 +34,7 @@ You should now have the required dependencies installed.
 > **NOTE:** If you intend to build with runtime enabled
 > (`-DTTMLIR_ENABLE_RUNTIME=ON`), you also need to install tt-metal
 > dependencies which can be found
-> [here](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/installing.
-> html#install-system-level-dependencies).
+> [here](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/installing.html#install-system-level-dependencies).
 
 #### Mac OS
 On MacOS we need to install the latest version of [cmake](https://cmake.org/), and [ninja](https://ninja-build.org/) which can be done using Homebrew with (Docs for installing Homebrew: https://brew.sh).
