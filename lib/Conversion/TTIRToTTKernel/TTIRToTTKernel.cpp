@@ -91,7 +91,7 @@ static Value getInOrOutCB(ConversionPatternRewriter &rewriter, Operation *op) {
     }
     return WalkResult::advance();
   });
-  assert(cb && "cb not found.");
+  assert(cb && "CB not found.");
   return rewriter.getRemappedValue(cb);
 }
 

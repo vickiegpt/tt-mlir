@@ -3735,7 +3735,8 @@ mlir::tt::ttir::GenericOp::getNonParticipatingLoopDims(int64_t operandIndex) {
   auto allDims = llvm::seq<int64_t>(indexingMap.getNumDims());
   SmallVector<int64_t> participatingDims =
       getParticipatingLoopDims(operandIndex);
-  // return (allDims - participatingDims)
+  // Return set difference:
+  //   (allDims - participatingDims)
   SmallVector<int64_t> nonParticipatingDims;
   std::set_difference(
       allDims.begin(), allDims.end(), participatingDims.begin(),

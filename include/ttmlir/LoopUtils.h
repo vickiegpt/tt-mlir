@@ -17,15 +17,15 @@ namespace ttmlir::utils {
 // Returns the outermost possible loop nest level given a set of affine
 // load/store index values.
 inline mlir::Block *getLoopNestLevel(mlir::ValueRange values) {
-  mlir::Region *nestLevel = values[0].getParentRegion();
+  mlir::Region *outermostNestLevel = values[0].getParentRegion();
   for (mlir::Value value : values) {
     mlir::Region *region = value.getParentRegion();
-    if (nestLevel->isAncestor(region)) {
-      nestLevel = region;
+    if (outermostNestLevel->isAncestor(region)) {
+      outermostNestLevel = region;
     }
   }
-  assert(nestLevel->getBlocks().size() == 1);
-  return &nestLevel->front();
+  assert(outermostNestLevel->getBlocks().size() == 1);
+  return &outermostNestLevel->front();
 }
 
 template <typename OpType>

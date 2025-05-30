@@ -177,7 +177,7 @@ public:
       }
 
       // Collect stores from this op.
-      for (auto user : op->getUsers()) {
+      for (auto *user : op->getUsers()) {
         if (auto potentialStore = mlir::dyn_cast<affine::AffineStoreOp>(user);
             notDstMemspace(potentialStore)) {
           assert(!dstRegisterAllocationState.storedToDst &&

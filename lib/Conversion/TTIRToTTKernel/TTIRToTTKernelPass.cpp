@@ -68,6 +68,7 @@ struct ConvertTTIRToTTKernel
     });
     target.addLegalOp<memref::AllocOp>();
     target.addLegalOp<memref::DeallocOp>();
+    target.addLegalOp<memref::CopyOp>();
 
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
       return !op->hasAttr(ttir::ThreadAttr::name) ||
