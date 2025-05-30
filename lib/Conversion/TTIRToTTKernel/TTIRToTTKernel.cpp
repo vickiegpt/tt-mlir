@@ -75,6 +75,22 @@ static Value getCB(ConversionPatternRewriter &rewriter, Value cb) {
   return rewriter.getRemappedValue(loadOp.getMemref());
 }
 
+static Value getDstIdxFromResult(Value ttirOpResult) {
+  memref::StoreOp storeOp;
+  for (Operation *op : ttirOpResult.getUsers()) {
+    auto store = mlir::dyn_cast<memref::StoreOp>(op);
+    if (store &&
+        tt::getMemorySpace(store.getMemRef()) == tt::MemorySpace::RegisterDst) {
+      storeOp = mlir::cast<memref::StoreOp>(op);
+      break;
+    }
+  }
+  assert(storeOp && "Expected store op.");
+  assert(storeOp.getIndices().size() == 1 &&
+         "Expected single index in store op");
+  return storeOp.getIndices().front();
+}
+
 // This is a workaround special case for getting an in/out CB. This whole
 // routine should go away with issue:
 // https://github.com/tenstorrent/tt-mlir/issues/3602
@@ -254,7 +270,7 @@ public:
                                                adaptor.getA(), adaptor.getB(),
                                                adaptor.getC(), transpose);
     } else if constexpr (arity == 2) {
-      auto dstIdx = index(rewriter, op->getLoc(), 0);
+      auto dstIdx = getDstIdxFromResult(op.getResult());
       rewriter.create<InitOp>(op->getLoc(), getCB(rewriter, op.getLhs()),
                               getCB(rewriter, op.getRhs()));
       rewriter.create<FPUOp>(op->getLoc(), getCB(rewriter, op.getLhs()),
