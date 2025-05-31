@@ -231,6 +231,10 @@ public:
   dataCopyGenerate(PatternRewriter &rewriter, Location loc, Value dst,
                    const DenseMap<Operation *, CopyInfo> &loopNests) {
     for (const auto &[loopNestOrOp, copyInfo] : loopNests) {
+      // Save this insertion point as loopNestOrOp may be replaced.
+      rewriter.setInsertionPointAfter(loopNestOrOp);
+      auto insertionPointAfterLoopNest = rewriter.saveInsertionPoint();
+
       rewriter.setInsertionPoint(loopNestOrOp);
       auto guard = insertGuardForLoopNest(rewriter, loc, copyInfo.guardIndices);
       if (guard) {
@@ -254,7 +258,7 @@ public:
                 op, dst, dstAccessMap, dstAccessIndices);
           });
 
-      rewriter.setInsertionPointAfter(loopNestOrOp);
+      rewriter.restoreInsertionPoint(insertionPointAfterLoopNest);
       dataCopyGenerate<affine::AffineStoreOp>(
           rewriter, loopNestOrOp, copyInfo.stores,
           // Load/store dst access generation.
