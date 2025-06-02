@@ -931,7 +931,7 @@ TEST_F(OpModelBase, ConvTranspose2dInterfaceConfigs) {
       builder.getUnknownLoc(), outputType, input, weight, nullptr, deviceOp, 3,
       64, 1, 224, 224, llvm::ArrayRef<int32_t>({7, 7}),
       llvm::ArrayRef<int32_t>({2, 2}), llvm::ArrayRef<int32_t>({3, 3}),
-      llvm::ArrayRef<int32_t>({3, 3}), llvm::ArrayRef<int32_t>({1, 1}), 1,
+      llvm::ArrayRef<int32_t>({0, 0}), llvm::ArrayRef<int32_t>({1, 1}), 1,
       nullptr);
 
   // Device hangs otherwise.
