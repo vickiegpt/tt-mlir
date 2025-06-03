@@ -12,8 +12,13 @@ import logging
 from typing import Tuple
 
 from ttmlir.ir import Context
-from irmodule import IRModule, Registry, GoldenExecutor, TensorPool, Type
-from metrics import compute_pcc, compute_abs_err, compute_rel_err
+from core.ops import IRModule
+from core.registry import Registry
+from core.golden_executor import GoldenExecutor
+from core.tensors import TensorPool
+from core.execution_type import ExecutionType
+from utils.metrics import compute_pcc, compute_abs_err, compute_rel_err
+from utils.location import parse_op_location
 
 from ttrt.common.api import API as RtApi
 from ttrt.common.util import Logger as RtLogger
@@ -35,12 +40,6 @@ import pdb
 
 timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
 csvfile = f"pccdata_{timestamp}.csv"
-
-# sys.excepthook = lambda *args: pdb.pm()
-
-
-def parse_op_location(op_location: str) -> Tuple[int, int]:
-    return tuple(int(x) for x in op_location[:-1].split(":")[-2:])
 
 
 class ChiselContext:
@@ -106,8 +105,8 @@ class ChiselContext:
         )
 
     def compare_outputs(self, op_location: Tuple[int, int]):
-        last_device_op = self.registry.get_last(op_location, Type.DEVICE)
-        last_golden_op = self.registry.get_last(op_location, Type.GOLDEN)
+        last_device_op = self.registry.get_last(op_location, ExecutionType.DEVICE)
+        last_golden_op = self.registry.get_last(op_location, ExecutionType.GOLDEN)
 
         device_output_name = last_device_op.output.name
         golden_output_name = last_golden_op.output.name
@@ -131,7 +130,7 @@ class ChiselContext:
         output_ref = get_op_output_ref(programContext, opContext)
         output_tensor = get_tensor(output_ref)
 
-        device_op = self.registry.find_op(op_location, debug_str, Type.DEVICE)
+        device_op = self.registry.find_op(op_location, debug_str, ExecutionType.DEVICE)
         self.device_tensor_pool[device_op.output.name].data = output_tensor
 
         if self.planner.execute_golden(op_location, debug_str):
