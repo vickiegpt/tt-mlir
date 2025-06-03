@@ -129,7 +129,8 @@ def TTIR_GenericOp : TTIR_BufferizableOp<"generic",
         if (!grid) {
           RankedTensorType tensorType = mlir::dyn_cast<RankedTensorType>(outputs[0].getType());
           if (tensorType) {
-            grid = mlir::cast<tt::MetalLayoutAttr>(tensorType.getEncoding()).getGrid();
+            auto layout = mlir::cast<tt::MetalLayoutAttr>(tensorType.getEncoding());
+            grid = $_builder.getAttr<tt::GridAttr>(layout.getGridShape());
           } else {
             MemRefType memrefType = mlir::cast<MemRefType>(outputs[0].getType());
             DeviceLayoutInterface layout = mlir::cast<DeviceLayoutInterface>(memrefType.getLayout());
@@ -150,7 +151,11 @@ def TTIR_GenericOp : TTIR_BufferizableOp<"generic",
         build($_builder, $_state, inputs, outputs, indexingMaps, iteratorTypes, singleThreadType, grid);
         llvm::SmallVector<Type> blockTypes = llvm::map_to_vector(TypeRange($_state.operands), [&](Type t) -> Type {
           mlir::RankedTensorType tensorType = mlir::cast<RankedTensorType>(t);
-          return mlir::cast<tt::MetalLayoutAttr>(tensorType.getEncoding()).getMemref();
+          auto layout = mlir::cast<tt::MetalLayoutAttr>(tensorType.getEncoding());
+          return MemRefType::get(tensorType.getShape(), tensorType.getElementType(),
+                                MemRefLayoutAttrInterface{}, // Explicitly typed empty layout
+                                MemorySpaceAttr::get($_builder.getContext(), layout.getMemorySpace()));
+
         });
         Region& region = *$_state.regions.front().get();
         llvm::SmallVector<mlir::Location> locs($_state.operands.size(), $_state.location);
@@ -167,7 +172,8 @@ def TTIR_GenericOp : TTIR_BufferizableOp<"generic",
         assert(outputs.size() == 1 && "expected single output");
         RankedTensorType tensorType = mlir::cast<RankedTensorType>(outputs[0].getType());
         MetalLayoutAttr layout = mlir::cast<tt::MetalLayoutAttr>(tensorType.getEncoding());
-        auto [indexingMaps, iteratorTypes] = buildParallelAffineMapsAndIteratorTypes($_builder, inputs.size() + outputs.size(), layout.getRank());
+        auto [indexingMaps, iteratorTypes] = buildParallelAffineMapsAndIteratorTypes($_builder,
+            inputs.size() + outputs.size(), layout.getLogicalShape().size());
         build($_builder, $_state, inputs, outputs, indexingMaps, iteratorTypes, singleThreadRegionBuilder, singleThreadType, grid);
       }]>,
     ];
