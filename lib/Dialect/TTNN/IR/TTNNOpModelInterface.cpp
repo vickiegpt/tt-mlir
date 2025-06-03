@@ -16,7 +16,6 @@
 #include <cassert>
 #include <cstdint>
 #include <optional>
-#include <tuple>
 
 namespace mlir::tt::ttnn {
 
@@ -393,9 +392,9 @@ ConcatOp::getOpConstraints(const std::vector<TTNNLayoutAttr> &inputs,
 
   std::vector<llvm::ArrayRef<int64_t>> inputShapes;
   mlir::OperandRange opInputs = getInputs();
-  for (auto opInput : opInputs.drop_front()) {
+  for (auto it = opInputs.begin(); it != opInputs.end(); ++it) {
     mlir::RankedTensorType inputType =
-        mlir::cast<mlir::RankedTensorType>(opInput.getType());
+        mlir::cast<mlir::RankedTensorType>((*it).getType());
     inputShapes.push_back(inputType.getShape());
   }
 
@@ -416,9 +415,9 @@ ConcatOp::getOpRuntime(const std::vector<TTNNLayoutAttr> &inputs,
 
   std::vector<llvm::ArrayRef<int64_t>> inputShapes;
   mlir::OperandRange opInputs = getInputs();
-  for (auto opInput : opInputs.drop_front()) {
+  for (auto it = opInputs.begin(); it != opInputs.end(); ++it) {
     mlir::RankedTensorType inputType =
-        mlir::cast<mlir::RankedTensorType>(opInput.getType());
+        mlir::cast<mlir::RankedTensorType>((*it).getType());
     inputShapes.push_back(inputType.getShape());
   }
 
