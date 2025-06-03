@@ -3,12 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Tuple
 from ttmlir.ir import Operation
+import torch
 
-from .tensors import TensorPool
+from .tensors import TensorPool, TensorValue
 from .enums import ExecutionType
 from .registry import Registry
+from .ops import Op
 from .tensors import get_op_inputs, get_op_outputs
 from ..utils.mapping import ttir_to_torch_mapping
+import pdb
 
 
 class GoldenExecutor:
@@ -20,9 +23,9 @@ class GoldenExecutor:
         self.loc_iter = iter(self.op_locations)
         self.golden_tensor_pool = golden_tensor_pool
 
-    def execute(self, op: Operation):
+    def execute(self, op: Op):
         print(f"Executing operation: {op.name}")
-        print(f"Operation ASM: {op.get_asm()}")
+        print(f"Operation ASM: {op.asm}")
         print(f"Operation location: {op.location}")
         print(f"Executing op: {op.name}")
 
@@ -32,17 +35,19 @@ class GoldenExecutor:
 
         mapping = ttir_to_torch_mapping[op.name]
 
-        outputs = get_op_outputs(op)
+        outputs = op.outputs
         inputs = [
-            self.golden_tensor_pool[input.name]
-            for input in get_op_inputs(op)
-            if input.name not in outputs
-            and hasattr(input.arg.owner, "name")
-            and input.arg.owner.name != "ttir.empty"
+            self.golden_tensor_pool[input.name].execution_data
+            for i, input in enumerate(op.inputs)
+            if not (
+                (i == len(op.inputs) - 1)
+                and (input.name not in self.golden_tensor_pool)
+            )
         ]
         print(
-            f"Input shapes: {[(inp.name, x.golden_data.shape if x is not None else None) for inp, x in zip(get_op_inputs(op), inputs)]}"
+            f"Input shapes: {[(inp.name, x.shape if x is not None else None) for inp, x in zip(op.inputs, inputs)]}"
         )
+        print(f"Inputs: {inputs}")
         op_result = mapping(op, inputs)
         if op.name == "func.return":
             return op_result
@@ -51,8 +56,16 @@ class GoldenExecutor:
             tensor_name = output.name
             if op_result is not None:
                 print(f"Output shape: {tensor_name} = {op_result.shape}")
-            self.golden_tensor_pool[tensor_name] = op_result
 
+            self.golden_tensor_pool[tensor_name] = TensorValue(
+                tensor_name, op_result, ExecutionType.GOLDEN
+            )
+            # check if all values are nan
+            # if torch.isnan(op_result).any() or torch.isinf(op_result).any():
+            #     print(f"Tensor {tensor_name} has nan values")
+            #     print(f"Tensor values: {op_result}")
+            #     raise ValueError(f"Tensor {tensor_name} has nan values")
+            print(f"Added tensor {tensor_name} to golden tensor pool")
         return op_result
 
     def execute_golden(self, device_op_location: Tuple[int, int], op_asm: str) -> bool:
@@ -62,10 +75,10 @@ class GoldenExecutor:
         if last_device_op is None:
             print(f"No last device op found for location {device_op_location}")
             return False
-        if last_device_op.get_asm(enable_debug_info=True) != op_asm:
+        if last_device_op.asm != op_asm:
             print(f"ASM mismatch at {device_op_location}")
             print(f"Expected: {op_asm}")
-            print(f"Got: {last_device_op.get_asm(enable_debug_info=True)}")
+            print(f"Got: {last_device_op.asm}")
             return False
 
         to_execute = []
@@ -77,6 +90,6 @@ class GoldenExecutor:
 
         print(f"Executing golden ops from groups: {to_execute}")
         for loc in to_execute:
-            for op in self.registry.op_groups[loc][ExecutionType.GOLDEN]:
+            for op in self.registry.op_groups[loc].ops[ExecutionType.GOLDEN]:
                 self.execute(op)
         return True

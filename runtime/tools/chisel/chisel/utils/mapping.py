@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # DISCLAIMER: this file will be removed very soon and is a temporary solution
 
-import ttmlir
+from ttmlir import ir
 import torch
 
 
@@ -12,15 +12,30 @@ ttir_dtype_maps = {
     "i64": torch.int64,
     "f32": torch.float32,
     "f64": torch.float64,
+    "si32": torch.int32,
     "i1": torch.bool,
     "bf16": torch.bfloat16,
     "f16": torch.float16,
+}
+
+ttrt_dtype_maps = {
+    "DataType.Float32": torch.float32,
+    "DataType.BFloat16": torch.bfloat16,
+    "DataType.UInt32": torch.uint32,
+    "DataType.UInt16": torch.uint16,
+    "DataType.UInt8": torch.uint8,
+    "DataType.Int32": torch.int32,
 }
 
 
 def resolve_dense_attr(dense_attr):
     if dense_attr.is_splat:
         value = dense_attr.get_splat_value()
+        assert dense_attr.type.shape == [
+            1
+        ], "Not implemented: splat value must be a scalar, got shape: " + str(
+            dense_attr.type.shape
+        )
         return value
     try:
         values = [dense_attr[i] for i in range(len(dense_attr))]
@@ -41,13 +56,30 @@ def resolve_dense_attr(dense_attr):
         print(f"Get method error: {e}")
 
 
+def handle_dense_elements_attr(x):
+    val = resolve_dense_attr(x)
+    if hasattr(val, "value"):
+        val = val.value
+    return val
+
+
+handle_attr_type = {
+    ir.DenseIntElementsAttr: handle_dense_elements_attr,
+    ir.IntegerAttr: lambda x: x.value,
+    ir.BoolAttr: lambda x: x.value,
+    ir.DenseI64ArrayAttr: lambda x: [x[i] for i in range(len(x))],
+    ir.DenseFPElementsAttr: handle_dense_elements_attr,
+    ir.ArrayAttr: lambda x: [x[i].value for i in range(len(x))],
+}
+
+
 class OpMapping:
     def __init__(self, torch_op, arg_map=None, unpack_inputs=True):
         self.torch_op = torch_op
         self.arg_map = arg_map or {}
         self.unpack_inputs = unpack_inputs
 
-    def __call__(self, ir_op, inputs):
+    def __call__(self, op, inputs):
         if isinstance(inputs, list) and len(inputs) > 1:
             result_inputs = inputs
         else:
@@ -56,30 +88,19 @@ class OpMapping:
             )
 
         torch_args = {}
-        for k, v in self.arg_map.items():
-            if k in ir_op.attributes:
-                if isinstance(ir_op.attributes[k], ttmlir.ir.DenseElementsAttr):
-                    val = resolve_dense_attr(ir_op.attributes[k])
-                    if hasattr(val, "value"):
-                        val = val.value
-                    torch_args[v] = val
-                elif isinstance(ir_op.attributes[k], ttmlir.ir.DenseI64ArrayAttr):
-                    torch_args[v] = [x for x in ir_op.attributes[k]]
-                elif isinstance(ir_op.attributes[k], ttmlir.ir.DenseI32ArrayAttr):
-                    torch_args[v] = [x for x in ir_op.attributes[k]]
-                elif isinstance(ir_op.attributes[k], ttmlir.ir.ArrayAttr):
-                    torch_args[v] = [x.value for x in ir_op.attributes[k]]
-                else:
-                    torch_args[v] = ir_op.attributes[k].value
+        for arg_name, arg_value in op.args.items():
+            if arg_name is not None:
+                if arg_name in self.arg_map:
+                    torch_args[self.arg_map[arg_name]] = arg_value
+            else:
+                torch_args[arg_name] = arg_value
 
-        if ir_op.name == "ttir.constant":
-            torch_args["dtype"] = ttir_dtype_maps[
-                str(ir_op.attributes[0].attr.type.element_type)
-            ]
-            torch_args["shape"] = ir_op.attributes[0].attr.type.shape
+        if op.name == "ttir.constant":
+            torch_args["dtype"] = ttir_dtype_maps[str(op.outputs[0].dtype)]
+            torch_args["shape"] = op.outputs[0].shape
 
-        if ir_op.name == "ttir.typecast":
-            torch_args["dtype"] = ttir_dtype_maps[str(ir_op.output.type.element_type)]
+        if op.name == "ttir.typecast":
+            torch_args["dtype"] = ttir_dtype_maps[str(op.outputs[0].dtype)]
 
         if not self.unpack_inputs:
             print("torch op", self.torch_op, result_inputs, torch_args)
@@ -209,6 +230,15 @@ def custom_max(x, dim=None, keepdim=False):
     return x
 
 
+def custom_mean(x, dim=None, keepdim=False):
+    if dim is None:
+        return torch.mean(x)
+    dim = reversed(sorted(dim))
+    for d in dim:
+        x = torch.mean(x, d, keepdim=keepdim)
+    return x
+
+
 def custom_slice(x, begins=None, ends=None, step=None):
     if begins is None and ends is None and step is None:
         return x
@@ -297,6 +327,18 @@ def custom_avg_pool2d(*args, **kwargs):
     return out.permute(0, 2, 3, 1)
 
 
+def custom_matmul(x, y, transpose_a=False, transpose_b=False):
+    if transpose_a:
+        x = x.T
+    if transpose_b:
+        y = y.T
+    return torch.matmul(x, y)
+
+
+def custom_transpose(x, dim0, dim1):
+    return x.transpose(dim0, dim1)
+
+
 ttir_to_torch_mapping = {
     # do nothing
     "ttir.empty": OpMapping(lambda x=None, *args, **kwargs: None),
@@ -318,9 +360,12 @@ ttir_to_torch_mapping = {
     "ttir.ne": OpMapping(torch.ne),
     "ttir.logical_and": OpMapping(torch.logical_and),
     "ttir.lt": OpMapping(torch.lt),
-    "ttir.matmul": OpMapping(torch.matmul),
+    "ttir.matmul": OpMapping(custom_matmul),
     "ttir.max": OpMapping(
         custom_max, {"dim_arg": "dim", "keep_dim": "keepdim"}, unpack_inputs=False
+    ),
+    "ttir.mean": OpMapping(
+        custom_mean, {"dim_arg": "dim", "keep_dim": "keepdim"}, unpack_inputs=False
     ),
     "ttir.maximum": OpMapping(torch.maximum),
     "ttir.multiply": OpMapping(torch.multiply),
@@ -334,10 +379,21 @@ ttir_to_torch_mapping = {
     "ttir.reshape": OpMapping(torch.reshape, {"shape": "shape"}, unpack_inputs=False),
     "ttir.rsqrt": OpMapping(torch.rsqrt, unpack_inputs=False),
     "ttir.sqrt": OpMapping(torch.sqrt, unpack_inputs=False),
+    "ttir.cos": OpMapping(torch.cos, unpack_inputs=False),
+    "ttir.unsqueeze": OpMapping(torch.unsqueeze, unpack_inputs=False),
+    "ttir.squeeze": OpMapping(torch.squeeze, unpack_inputs=False),
+    "ttir.repeat_interleave": OpMapping(torch.repeat_interleave, unpack_inputs=False),
+    "ttir.sin": OpMapping(torch.sin, unpack_inputs=False),
+    "ttir.softmax": OpMapping(
+        torch.nn.functional.softmax, {"dimension": "dim"}, unpack_inputs=False
+    ),
+    "ttir.sigmoid": OpMapping(torch.sigmoid, unpack_inputs=False),
     "ttir.subtract": OpMapping(torch.subtract),
     "ttir.sum": OpMapping(
         torch.sum, {"dim_arg": "dim", "keep_dim": "keepdim"}, unpack_inputs=False
     ),
+    "ttir.transpose": OpMapping(custom_transpose, unpack_inputs=False),
+    "ttir.reciprocal": OpMapping(torch.reciprocal, unpack_inputs=False),
     "ttir.tanh": OpMapping(torch.tanh, unpack_inputs=False),
     "ttir.typecast": OpMapping(
         custom_typecast, {"dtype": "dtype"}, unpack_inputs=False
