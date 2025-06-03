@@ -7,8 +7,9 @@ from typing import Tuple
 
 from ttmlir.ir import Operation
 from ttmlir.ir import BlockArgument, Value, Type
-from core.execution_type import ExecutionType
-from utils.location import hash_location, parse_op_location
+
+from .enums import ExecutionType
+from ..utils.location import hash_location, parse_op_location
 
 
 @dataclass

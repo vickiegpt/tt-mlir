@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Tuple
 from ttmlir.ir import Operation
-from core.tensors import TensorPool
-from core.execution_type import ExecutionType
-from core.registry import Registry
-from mapping import ttir_to_torch_mapping
-from core.tensors import get_op_inputs, get_op_outputs
+
+from .tensors import TensorPool
+from .enums import ExecutionType
+from .registry import Registry
+from .tensors import get_op_inputs, get_op_outputs
+from ..utils.mapping import ttir_to_torch_mapping
 
 
 class GoldenExecutor:

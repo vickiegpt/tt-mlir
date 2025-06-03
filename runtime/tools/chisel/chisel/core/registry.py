@@ -5,10 +5,11 @@ from collections import defaultdict
 from typing import Dict, Tuple
 
 from ttmlir.ir import Operation
-from core.tensors import TensorDescriptor, get_function_inputs, get_op_outputs
-from core.execution_type import ExecutionType
-from irmodule import IRModule
-from utils.location import hash_location
+
+from .tensors import TensorDescriptor, get_function_inputs, get_op_outputs
+from .enums import ExecutionType
+from .ops import IRModule
+from ..utils.location import hash_location
 
 
 class Registry:

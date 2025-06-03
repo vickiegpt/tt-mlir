@@ -6,8 +6,8 @@ from typing import List
 from ttmlir.ir import Operation
 from ttmlir.dialects import func
 from ttmlir.ir import Context, Module
-from core.execution_type import ExecutionType
-from core.registry import Status
+
+from .enums import ExecutionType, Status
 
 
 class IRModule:
