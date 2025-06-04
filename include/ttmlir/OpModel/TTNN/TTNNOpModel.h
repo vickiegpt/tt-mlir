@@ -8,17 +8,18 @@
 #include "ttmlir/Dialect/TTNN/IR/TTNNOpModelInterface.h"
 #include "ttmlir/Dialect/TTNN/IR/TTNNOps.h"
 #include "ttmlir/Dialect/TTNN/IR/TTNNOpsAttrs.h"
+#include "ttmlir/OpModel/TTNN/TTNNOpConstraints.h"
 
 #include "mlir/IR/BuiltinTypes.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/Error.h"
-#include <tuple>
 
 namespace mlir::tt::op_model::ttnn {
 
 // Checks if the tensor layout is legal for the given tensor shape.
 bool isLayoutLegalForTensorShape(llvm::ArrayRef<int64_t> tensorShape,
-                                 mlir::tt::ttnn::TTNNLayoutAttr layout);
+                                 mlir::tt::ttnn::TTNNLayoutAttr layout,
+                                 GridAttr maxGrid);
 
 // Calculate the output tensor type of the prepared weights for a conv2d op.
 mlir::RankedTensorType
@@ -37,8 +38,7 @@ llvm::Expected<bool> getDeviceConstraints(mlir::tt::GridAttr workerGrid);
 //===----------------------------------------------------------------------===//
 
 namespace ReluOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  llvm::ArrayRef<int64_t> outputShape,
@@ -56,8 +56,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace SqrtOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  llvm::ArrayRef<int64_t> outputShape,
@@ -76,8 +75,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace SigmoidOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  llvm::ArrayRef<int64_t> outputShape,
@@ -96,8 +94,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace AddOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShapeA,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayoutA,
                  llvm::ArrayRef<int64_t> inputShapeB,
@@ -120,8 +117,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShapeA,
 //===----------------------------------------------------------------------===//
 
 namespace SoftmaxOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout, const int dimArg,
                  llvm::ArrayRef<int64_t> outputShape,
@@ -140,8 +136,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace MeanOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  std::optional<llvm::ArrayRef<int64_t>> dimArg, bool keepDim,
@@ -160,8 +155,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace ReshapeOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  llvm::ArrayRef<int64_t> outputShape,
@@ -180,8 +174,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace TypecastOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  mlir::tt::DataTypeAttr dtype,
@@ -201,8 +194,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace ToLayoutOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  std::optional<mlir::tt::DataType> outputDtype,
@@ -222,8 +214,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace TransposeOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout, const int dim0,
                  const int dim1, mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
@@ -240,8 +231,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 
 namespace MatmulOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShapeA,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayoutA,
                  llvm::ArrayRef<int64_t> inputShapeB,
@@ -264,8 +254,7 @@ llvm::Expected<size_t> getOpRuntime(llvm::ArrayRef<int64_t> inputShapeA,
 //===----------------------------------------------------------------------===//
 
 namespace MultiplyOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShapeA,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayoutA,
                  llvm::ArrayRef<int64_t> inputShapeB,
@@ -288,8 +277,7 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShapeA,
 //===----------------------------------------------------------------------===//
 
 namespace Conv2dOpInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
                  llvm::ArrayRef<int64_t> weightShape,
@@ -327,18 +315,15 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
 //===----------------------------------------------------------------------===//
 // MaxPool2D
 //===----------------------------------------------------------------------===//
-namespace MaxPool2DInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
-getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
-                 mlir::tt::ttnn::TTNNLayoutAttr inputLayout, int32_t batchSize,
-                 int32_t inputHeight, int32_t inputWidth, int32_t inputChannels,
-                 llvm::ArrayRef<int32_t> kernelSize,
-                 llvm::ArrayRef<int32_t> stride,
-                 llvm::ArrayRef<int32_t> padding,
-                 llvm::ArrayRef<int32_t> dilation, bool ceilMode,
-                 llvm::ArrayRef<int64_t> outputShape,
-                 mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+namespace MaxPool2DOpInterface {
+llvm::Expected<OpConstraints> getOpConstraints(
+    GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
+    mlir::tt::ttnn::TTNNLayoutAttr inputLayout, int32_t batchSize,
+    int32_t inputHeight, int32_t inputWidth, int32_t inputChannels,
+    llvm::ArrayRef<int32_t> kernelSize, llvm::ArrayRef<int32_t> stride,
+    llvm::ArrayRef<int32_t> padding, llvm::ArrayRef<int32_t> dilation,
+    bool ceilMode, llvm::ArrayRef<int64_t> outputShape,
+    mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
 
 llvm::Expected<size_t>
 getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
@@ -349,14 +334,13 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
              bool ceilMode, llvm::ArrayRef<int64_t> outputShape,
              mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
 
-}; // namespace MaxPool2DInterface
+}; // namespace MaxPool2DOpInterface
 
 //===----------------------------------------------------------------------===//
 // ClampScalar
 //===----------------------------------------------------------------------===//
-namespace ClampScalarInterface {
-llvm::Expected<
-    std::tuple<size_t, size_t, size_t, ::mlir::tt::ttnn::TTNNLayoutAttr>>
+namespace ClampScalarOpInterface {
+llvm::Expected<OpConstraints>
 getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
                  mlir::tt::ttnn::TTNNLayoutAttr inputLayout, llvm::APFloat min,
                  llvm::APFloat max, llvm::ArrayRef<int64_t> outputShape,
@@ -367,7 +351,66 @@ getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
              mlir::tt::ttnn::TTNNLayoutAttr inputLayout, llvm::APFloat min,
              llvm::APFloat max, llvm::ArrayRef<int64_t> outputShape,
              mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
-}; // namespace ClampScalarInterface
+}; // namespace ClampScalarOpInterface
+
+//===----------------------------------------------------------------------===//
+// Permute
+//===----------------------------------------------------------------------===//
+namespace PermuteOpInterface {
+llvm::Expected<OpConstraints>
+getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
+                 mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
+                 llvm::ArrayRef<int64_t> permutation, llvm::APFloat padValue,
+                 llvm::ArrayRef<int64_t> outputShape,
+                 mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+
+llvm::Expected<size_t>
+getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
+             mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
+             llvm::ArrayRef<int64_t> permutation, llvm::APFloat padValue,
+             llvm::ArrayRef<int64_t> outputShape,
+             mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+}; // namespace PermuteOpInterface
+
+//===----------------------------------------------------------------------===//
+// Upsample
+//===----------------------------------------------------------------------===//
+namespace UpsampleOpInterface {
+llvm::Expected<OpConstraints>
+getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShape,
+                 mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
+                 mlir::Attribute scaleFactor, llvm::StringRef mode,
+                 llvm::ArrayRef<int64_t> outputShape,
+                 mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+
+llvm::Expected<size_t>
+getOpRuntime(llvm::ArrayRef<int64_t> inputShape,
+             mlir::tt::ttnn::TTNNLayoutAttr inputLayout,
+             mlir::Attribute scaleFactor, llvm::StringRef mode,
+             llvm::ArrayRef<int64_t> outputShape,
+             mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+}; // namespace UpsampleOpInterface
+
+//===----------------------------------------------------------------------===//
+// Subtract
+//===----------------------------------------------------------------------===//
+namespace SubtractOpInterface {
+llvm::Expected<OpConstraints>
+getOpConstraints(GridAttr deviceGrid, llvm::ArrayRef<int64_t> inputShapeA,
+                 mlir::tt::ttnn::TTNNLayoutAttr inputLayoutA,
+                 llvm::ArrayRef<int64_t> inputShapeB,
+                 mlir::tt::ttnn::TTNNLayoutAttr inputLayoutB,
+                 llvm::ArrayRef<int64_t> outputShape,
+                 mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+
+llvm::Expected<size_t>
+getOpRuntime(llvm::ArrayRef<int64_t> inputShapeA,
+             mlir::tt::ttnn::TTNNLayoutAttr inputLayoutA,
+             llvm::ArrayRef<int64_t> inputShapeB,
+             mlir::tt::ttnn::TTNNLayoutAttr inputLayoutB,
+             llvm::ArrayRef<int64_t> outputShape,
+             mlir::tt::ttnn::TTNNLayoutAttr outputLayout);
+} // namespace SubtractOpInterface
 
 } // namespace mlir::tt::op_model::ttnn
 #endif // TTMLIR_OPMODEL_TTNN_TTNNOPMODEL_H

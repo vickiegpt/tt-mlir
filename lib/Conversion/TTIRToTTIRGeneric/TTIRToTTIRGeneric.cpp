@@ -628,10 +628,13 @@ void populateTTIRToTTIRGenericPatterns(MLIRContext *ctx,
     TTIRNamedElementwiseRewriter<ttir::MaximumOp,   ttir::TileMaximumOp>,
     TTIRNamedElementwiseRewriter<ttir::ExpOp,       ttir::TileExpOp>,
     TTIRNamedElementwiseRewriter<ttir::LogOp,       ttir::TileLogOp>,
+    TTIRNamedElementwiseRewriter<ttir::SigmoidOp,   ttir::TileSigmoidOp>,
     TTIRNamedElementwiseRewriter<ttir::SinOp,       ttir::TileSinOp>,
     // Reductions.
     TTIRNamedReductionRewriter<ttir::SumOp,         ttir::TileReduceSumOp>,
-    TTIRNamedReductionRewriter<ttir::MaxOp,         ttir::TileReduceMaxOp>
+    TTIRNamedReductionRewriter<ttir::MaxOp,         ttir::TileReduceMaxOp>,
+    // Data movement.
+    TTIRNamedElementwiseRewriter<ttir::TypecastOp,  ttir::TileTypecastOp>
   >(typeConverter, ctx, deviceGridRank);
 
   // Matmul.

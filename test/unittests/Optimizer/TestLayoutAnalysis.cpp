@@ -16,7 +16,6 @@
 #include "ttmlir/Dialect/TTNN/Utils/OptimizerUtils.h"
 #include "ttmlir/Dialect/TTNN/Utils/TransformUtils.h"
 
-#include "llvm-gtest/gtest/gtest.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -25,6 +24,7 @@
 #include "mlir/IR/ValueRange.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "gtest/gtest.h"
 
 using namespace mlir::tt::ttnn;
 
@@ -120,7 +120,12 @@ protected:
 };
 
 // Test that layouts are correctly generated for all tensor types with different
-// parameters
+// parameters.
+//
+// This test must be run serially for different inputs. Layout validation
+// includes calls into TensorSpec APIs that require the creation of the cluster
+// descriptor file. If multiple processes/threads attempt that in parallel, the
+// test will fail
 TEST_P(AllPossibleLayoutsAnalysisTest, GenerateAndCategorizeLayouts) {
   createTestOps();
 
