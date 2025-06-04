@@ -38,8 +38,9 @@ def pytest_runtest_setup(item):
 
 
 def filter_valid_mesh_shape(system_desc, params):
-    num_chips = reduce(operator.mul, params.get("mesh_shape", [1]), 1)
-    return num_chips == len(system_desc["chip_desc_indices"])
+    # num_chips = reduce(operator.mul, params.get("mesh_shape", [1]), 1)
+    # return num_chips == len(system_desc["chip_desc_indices"])
+    return True
 
 
 def pytest_collection_modifyitems(config, items):
